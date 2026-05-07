@@ -7,8 +7,8 @@ services:
       - baby-tracker-data:/app/data
     environment:
       - DATABASE_PATH=/app/data/sleep.db
-      - NTFY_URL=https://ntfy.polaris.rdhome.org
-      - NTFY_TOPIC=health-alerts
+      - NTFY_URL=${NTFY_URL:-}
+      - NTFY_TOPIC=${NTFY_TOPIC:-baby-tracker}
       - NTFY_TOKEN=${NTFY_TOKEN:-}
       # Feature flags — set to "false" to disable a feature (default: true)
       - FEATURE_SLEEP=${FEATURE_SLEEP:-true}
