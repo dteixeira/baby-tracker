@@ -1,0 +1,2898 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Baby Tracker</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BabyTracker" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1e293b;
+      --surface2: #1a2536;
+      --bg2: #162032;
+      --surface-hover: #243447;
+      --surface-btn-hover: #263344;
+      --border-hover: #4f6080;
+      --border: #334155;
+      --text-heading: #f8fafc;
+      --text: #f1f5f9;
+      --text-body: #e2e8f0;
+      --text-2: #94a3b8;
+      --text-muted: #64748b;
+      --text-muted2: #475569;
+      --divider: #0f1117;
+    }
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface2: #f1f5f9;
+      --bg2: #f1f5f9;
+      --surface-hover: #f1f5f9;
+      --surface-btn-hover: #e9eef5;
+      --border-hover: #94a3b8;
+      --border: #cbd5e1;
+      --text-heading: #0f172a;
+      --text: #1e293b;
+      --text-body: #334155;
+      --text-2: #475569;
+      --text-muted: #94a3b8;
+      --text-muted2: #64748b;
+      --divider: #e2e8f0;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text-body);
+      min-height: 100vh;
+      padding-bottom: 2rem;
+    }
+
+    /* ── App header ─────────────────────────────────────────── */
+    .app-header {
+      display: flex;
+      align-items: center;
+      padding: 1rem 1.5rem 0;
+    }
+    .app-title { font-size: 1.1rem; font-weight: 700; color: var(--text-heading); }
+
+    /* ── Tab bar ────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 0.125rem;
+      padding: 0.75rem 1.5rem 0;
+      border-bottom: 1px solid var(--surface);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-2);
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color 0.15s, background 0.15s;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab-btn:hover { color: var(--text-2); background: color-mix(in srgb, var(--surface) 25%, transparent); }
+    .tab-btn.active { color: #818cf8; border-bottom-color: #4f46e5; }
+
+    /* ── Tab content ────────────────────────────────────────── */
+    .tab-content { display: none; padding: 1.5rem; }
+    .tab-content.active { display: block; }
+
+    /* ── Shared ─────────────────────────────────────────────── */
+    h1 { font-size: 1.5rem; font-weight: 600; color: var(--text-heading); margin-bottom: 0.25rem; }
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .section-divider { border: none; border-top: 1px solid var(--surface); margin: 1.5rem 0; }
+    .error-msg {
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      color: #fca5a5;
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+    .loading-indicator { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ── Buttons ────────────────────────────────────────────── */
+    .btn-primary {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.6rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-secondary:hover { background: var(--surface-btn-hover); }
+    .btn-sm { padding: 0.4rem 0.9rem; font-size: 0.8rem; }
+    .btn-danger {
+      background: #7f1d1d;
+      color: #fca5a5;
+      border: none;
+      border-radius: 8px;
+      padding: 0.6rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-danger:hover { background: #991b1b; }
+    .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem 0.4rem;
+      border-radius: 4px;
+      color: var(--text-muted);
+      transition: color 0.15s, background 0.15s;
+      display: inline-flex;
+      align-items: center;
+    }
+    .btn-icon:hover { color: var(--text-body); background: var(--surface); }
+
+    /* ── Lucide icon sizing ─────────────────────────────────── */
+    svg { display: inline-block; vertical-align: middle; pointer-events: none; }
+    .app-title svg { width: 1.1rem; height: 1.1rem; stroke-width: 2; margin-right: 0.35rem; }
+    .tab-btn svg { width: 15px; height: 15px; stroke-width: 2; margin-right: 0.3rem; }
+    .btn-primary svg, .btn-secondary svg, .btn-stop svg { width: 14px; height: 14px; stroke-width: 2.5; margin-right: 0.35rem; }
+    .btn-start-lg svg, .btn-stop-lg svg { width: 16px; height: 16px; stroke-width: 2.5; margin-right: 0.4rem; }
+    .btn-icon svg { width: 15px; height: 15px; stroke-width: 2; }
+    .stub-icon-lg svg { width: 3rem; height: 3rem; stroke-width: 1.2; color: var(--border); }
+    .stub-card-icon svg { width: 1.75rem; height: 1.75rem; stroke-width: 1.5; color: var(--text-muted); }
+
+    /* ── Home tab ───────────────────────────────────────────── */
+    .active-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.75rem;
+    }
+    .active-card.running { border-color: #4f46e5; }
+    .active-card-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-2); }
+    .active-timer { font-size: 3rem; font-weight: 700; color: #818cf8; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .active-since { font-size: 0.8rem; color: var(--text-2); }
+    .btn-stop {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.6rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-stop:hover { background: #dc2626; }
+    .home-stubs {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    /* ── Sleep tracker tab ──────────────────────────────────── */
+    .sleep-ctl {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 0;
+    }
+    .sleep-ctl.running { border-color: #4f46e5; }
+    .sleep-timer-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-2); }
+    .sleep-timer { font-size: 3.5rem; font-weight: 700; color: #818cf8; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .sleep-since { font-size: 0.8rem; color: var(--text-2); }
+    .btn-start-lg {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.9rem 2.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-start-lg:hover { background: #4338ca; }
+    .btn-stop-lg {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.9rem 2.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-stop-lg:hover { background: #dc2626; }
+
+    /* ── Sleep entry list ───────────────────────────────────── */
+    .sleep-entry {
+      border-bottom: 1px solid var(--surface);
+      padding: 0.75rem 0;
+    }
+    .sleep-entry:last-child { border-bottom: none; }
+    .entry-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .entry-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .entry-date { font-size: 0.82rem; color: var(--text-2); font-weight: 500; white-space: nowrap; }
+    .entry-time { font-size: 0.82rem; color: var(--text-2); white-space: nowrap; }
+    .entry-dur  { font-size: 0.82rem; color: var(--text); font-weight: 600; white-space: nowrap; }
+    .entry-notes { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; padding-left: 0.1rem; }
+    .entry-actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+    .badge {
+      display: inline-block;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 0.1rem 0.45rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-night { background: #312e8120; color: #818cf8; border: 1px solid #4338ca40; }
+    .badge-nap   { background: #0d948820; color: #2dd4bf; border: 1px solid #0d948840; }
+
+    /* ── Inline edit form ───────────────────────────────────── */
+    .entry-edit-form {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.875rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .edit-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .edit-row label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-2);
+      width: 3.5rem;
+      flex-shrink: 0;
+    }
+    .edit-row input, .edit-row select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-body);
+      border-radius: 6px;
+      padding: 0.35rem 0.6rem;
+      font-size: 0.82rem;
+      min-width: 0;
+      outline: none;
+      color-scheme: light dark;
+    }
+    .edit-row input:focus, .edit-row select:focus { border-color: #4f46e5; }
+    .edit-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.25rem; }
+
+    /* ── Stub sections ──────────────────────────────────────── */
+    .stub-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 240px;
+      gap: 0.75rem;
+      text-align: center;
+    }
+    .stub-icon-lg { display: flex; align-items: center; justify-content: center; }
+    .stub-title { font-size: 1.1rem; font-weight: 600; color: var(--text); }
+    .stub-desc { font-size: 0.85rem; color: var(--text-muted); max-width: 320px; line-height: 1.5; }
+    .stub-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      text-align: center;
+      transition: border-color 0.3s;
+    }
+    .stub-card-icon { display: flex; align-items: center; justify-content: center; }
+    .stub-card-label { font-size: 0.85rem; font-weight: 600; color: var(--text-2); }
+    .stub-card-sub { font-size: 0.75rem; color: var(--text-2); }
+
+    /* ── Analysis: filter bar ───────────────────────────────── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .preset-group {
+      display: flex;
+      gap: 0.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.25rem;
+    }
+    .preset-btn {
+      background: none;
+      border: none;
+      color: var(--text-2);
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .preset-btn:hover { background: var(--border); color: var(--text-body); }
+    .preset-btn.active { background: #4f46e5; color: #fff; }
+    .custom-range {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-2);
+    }
+    .custom-range .flatpickr-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-body);
+      border-radius: 6px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+      outline: none;
+      width: 9.5rem;
+      cursor: pointer;
+    }
+    .custom-range .flatpickr-input:focus { border-color: #4f46e5; }
+
+    /* ── Analysis: stats grid ───────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-2);
+      margin-bottom: 0.5rem;
+    }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--text); line-height: 1; }
+    .stat-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; }
+    .stat-card.accent { border-color: #4f46e5; }
+    .stat-card.accent .stat-value { color: #818cf8; }
+
+    /* ── Analysis: charts ───────────────────────────────────── */
+    .chart-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+    .chart-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 1rem;
+    }
+    .chart-scroll { overflow-x: auto; }
+    .heatmap-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+    .heatmap-legend {
+      display: flex;
+      gap: 1.25rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: var(--text-heading);
+    }
+    .legend-swatch {
+      width: 14px;
+      height: 10px;
+      border-radius: 2px;
+    }
+    .heatmap-scroll { overflow-y: auto; max-height: 520px; }
+    #heatmapCanvas { display: block; }
+
+    /* ── Analysis: table ────────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    thead th {
+      background: var(--surface);
+      color: var(--text-2);
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.75rem 1rem;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    thead th:first-child { text-align: left; }
+    tbody tr { border-bottom: 1px solid var(--surface); transition: background 0.15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: color-mix(in srgb, var(--surface) 50%, transparent); }
+    tbody td { padding: 0.65rem 1rem; color: var(--text); text-align: right; white-space: nowrap; }
+    tbody td:first-child { text-align: left; }
+    .bar-cell { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; }
+    .bar { height: 6px; border-radius: 3px; background: #4f46e5; min-width: 2px; }
+    .split-badge {
+      display: inline-block;
+      background: #7c3aed20;
+      border: 1px solid #7c3aed60;
+      color: #a78bfa;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      padding: 0.1rem 0.4rem;
+    }
+    .muted { color: var(--text-muted2); }
+    /* ── Settings tab ───────────────────────────────────────── */
+    .settings-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .settings-group-title {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--divider);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-label { font-size: 0.875rem; color: var(--text); }
+    .settings-label small { display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem; }
+    .radio-group { display: flex; gap: 0.5rem; }
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.82rem;
+      color: var(--text-2);
+      cursor: pointer;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.3rem 0.7rem;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .radio-group input[type=radio] { display: none; }
+    .radio-group input[type=radio]:checked + span { color: #818cf8; }
+    .radio-group label:has(input:checked) { border-color: #4f46e5; color: #818cf8; }
+    .settings-save-row { display: flex; justify-content: flex-end; margin-top: 0.5rem; }
+    .settings-input {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-body); padding: 0.35rem 0.6rem; font-size: 0.85rem;
+    }
+    .settings-input:focus { outline: none; border-color: #4f46e5; }
+    .settings-sep { color: var(--text-muted); }
+
+    /* ── flatpickr tweaks ───────────────────────────────────────── */
+    .flatpickr-calendar { font-family: inherit; font-size: 0.85rem; }
+    .fp-dt-wrap { display: flex; align-items: center; gap: 0.25rem; }
+    .fp-dt-wrap .flatpickr-input { 
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-body); padding: 0.35rem 0.5rem; font-size: 0.85rem; width: 13rem;
+    }
+    .fp-dt-wrap .flatpickr-input:focus { outline: none; border-color: #4f46e5; }
+    /* ── Medicines tab ───────────────────────────────────────── */
+    .med-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .med-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .med-empty { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; }
+    .med-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem 1.25rem; transition: border-color 0.2s;
+    }
+    .med-card.overdue   { border-color: #ef4444; }
+    .med-card.due-soon  { border-color: #f59e0b; }
+    .med-card-main { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .med-info { flex: 1; min-width: 0; }
+    .med-name { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+    .med-meta { font-size: 0.78rem; color: var(--text-2); margin-top: 0.15rem; }
+    .med-countdown { text-align: center; min-width: 5.5rem; }
+    .med-countdown-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .med-countdown-time  { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .med-countdown-overdue  .med-countdown-label { color: #ef4444; }
+    .med-countdown-overdue  .med-countdown-time  { color: #fca5a5; }
+    .med-countdown-due-soon .med-countdown-label { color: #f59e0b; }
+    .med-countdown-due-soon .med-countdown-time  { color: #fcd34d; }
+    .med-countdown-ok       .med-countdown-label { color: var(--text-muted); }
+    .med-countdown-ok       .med-countdown-time  { color: var(--text-2); }
+    .btn-taken {
+      background: #4f46e5; color: #fff; border: none; border-radius: 8px;
+      padding: 0.5rem 1rem; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      transition: background 0.15s; white-space: nowrap;
+    }
+    .btn-taken:hover { background: #4338ca; }
+    .btn-taken svg { width: 14px; height: 14px; stroke-width: 2.5; }
+    .med-card.overdue  .btn-taken { background: #ef4444; }
+    .med-card.overdue  .btn-taken:hover { background: #dc2626; }
+    .med-card-footer {
+      display: flex; align-items: center; gap: 0.25rem;
+      margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--divider);
+    }
+    .med-history { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--divider); }
+    .med-history-entry {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.3rem 0; border-bottom: 1px solid var(--bg2); font-size: 0.8rem;
+    }
+    .med-history-entry:last-child { border-bottom: none; }
+    .med-history-time  { color: var(--text-2); flex: 1; }
+    .med-history-note  { color: var(--text-muted); font-style: italic; }
+    .med-history-empty { color: var(--text-muted); font-size: 0.8rem; padding: 0.25rem 0; }
+    .med-form {
+      background: var(--surface); border: 1px solid #4f46e5;
+      border-radius: 12px; padding: 1.25rem; margin-bottom: 0.75rem;
+    }
+    .med-form-grid { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+    .med-archived-toggle {
+      background: none; border: none; color: var(--text-muted); font-size: 0.8rem;
+      cursor: pointer; padding: 0.75rem 0; display: flex; align-items: center; gap: 0.4rem;
+    }
+    .med-archived-toggle:hover { color: var(--text-2); }
+    .med-archived-toggle svg { width: 14px; height: 14px; }
+    .med-archived-title {
+      font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted); margin: 0.25rem 0 0.75rem;
+    }
+    .med-card.archived { opacity: 0.55; }
+
+    /* ── Health tab ──────────────────────────────────────────── */
+    .health-dashboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+    .health-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1rem; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      display: flex; flex-direction: column; gap: 0.35rem;
+    }
+    .health-card:hover { background: var(--surface-hover); border-color: var(--border-hover); }
+    .health-card-icon { color: var(--text-muted); display: flex; }
+    .health-card-name { font-size: 0.78rem; font-weight: 600; color: var(--text-2); }
+    .health-card-value { font-size: 1.35rem; font-weight: 700; color: var(--text); line-height: 1.1; }
+    .health-card-unit  { font-size: 0.7rem; color: var(--text-2); }
+    .health-card-ago   { font-size: 0.7rem; color: var(--text-2); margin-top: auto; }
+    .health-card-sparkline { margin-top: 0.4rem; }
+    .health-card.alert { border-color: #ef4444; }
+    .health-card.warn  { border-color: #f59e0b; }
+
+    .health-detail { display: none; flex-direction: column; gap: 1rem; }
+    .health-detail.active { display: flex; }
+    .health-detail-header { display: flex; align-items: center; gap: 0.75rem; }
+    .health-back { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; display: flex; align-items: center; }
+    .health-back:hover { color: var(--text-body); }
+    .health-detail-title { font-size: 1rem; font-weight: 600; color: var(--text); }
+    .health-chart-wrap { position: relative; height: 220px; }
+    .health-chart-wrap canvas { width: 100% !important; height: 220px !important; }
+    .health-history { display: flex; flex-direction: column; gap: 0.4rem; }
+    .health-entry {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: var(--surface); border-radius: 8px; padding: 0.6rem 0.75rem;
+    }
+    .health-entry-val  { font-size: 1rem; font-weight: 700; color: var(--text); min-width: 4.5rem; }
+    .health-entry-ts   { font-size: 0.75rem; color: var(--text-muted); flex: 1; }
+    .health-entry-note { font-size: 0.75rem; color: var(--text-2); font-style: italic; }
+    .health-entry-actions { display: flex; gap: 0.25rem; margin-left: auto; }
+    .health-add-form {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .health-add-row { display: flex; align-items: center; gap: 0.75rem; }
+    .health-add-row label { font-size: 0.75rem; font-weight: 500; color: var(--text-2); width: 3.5rem; flex-shrink: 0; }
+    .health-add-row input[type=number], .health-add-row input[type=text],
+    .health-add-row select {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-body); padding: 0.35rem 0.6rem; font-size: 0.82rem;
+      flex: 1; min-width: 0; outline: none; color-scheme: light dark;
+    }
+    .health-add-row input[type=number] { max-width: 8rem; flex: none; }
+    .health-add-row input:focus, .health-add-row select:focus { border-color: #4f46e5; }
+    .health-ref-band { font-size: 0.7rem; color: var(--text-muted); margin-top: -0.25rem; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <span class="app-title"><i data-lucide="moon"></i> <span id="app-child-name">Baby</span> Tracker</span>
+</header>
+
+<nav class="tab-bar" role="tablist">
+  <button class="tab-btn active" data-tab="home"      role="tab"><i data-lucide="house"></i> Home</button>
+  <button class="tab-btn"        data-tab="sleep"     role="tab"><i data-lucide="bed-double"></i> Sleep</button>
+  <button class="tab-btn"        data-tab="analysis"  role="tab"><i data-lucide="bar-chart-3"></i> Analysis</button>
+  <button class="tab-btn"        data-tab="medicines" role="tab"><i data-lucide="pill"></i> Medicines</button>
+  <button class="tab-btn"        data-tab="health"    role="tab"><i data-lucide="thermometer"></i> Health</button>
+  <button class="tab-btn"        data-tab="settings"  role="tab"><i data-lucide="settings-2"></i> Settings</button>
+</nav>
+
+<main>
+
+<!-- ── HOME ────────────────────────────────────────────────────────────────── -->
+<section id="tab-home" class="tab-content active">
+  <div id="home-active-session"></div>
+  <div class="home-stubs">
+    <div id="home-sleep-widget" class="stub-card" onclick="showTab('sleep')" style="cursor:pointer">
+      <div class="stub-card-icon"><i data-lucide="bed-double"></i></div>
+      <div class="stub-card-label">Sleep</div>
+      <div class="stub-card-sub" id="home-sleep-sub">Loading…</div>
+    </div>
+    <div id="home-med-widget" class="stub-card" onclick="showTab('medicines')" style="cursor:pointer">
+      <div class="stub-card-icon"><i data-lucide="pill"></i></div>
+      <div class="stub-card-label">Medicines</div>
+      <div class="stub-card-sub" id="home-med-sub">Loading…</div>
+    </div>
+    <div id="home-health-widget" class="stub-card" onclick="showTab('health')" style="cursor:pointer">
+      <div class="stub-card-icon"><i data-lucide="thermometer"></i></div>
+      <div class="stub-card-label">Health</div>
+      <div class="stub-card-sub" id="home-health-sub">Loading…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SLEEP TRACKER ────────────────────────────────────────────────────────── -->
+<section id="tab-sleep" class="tab-content">
+  <div id="sleep-control"></div>
+  <hr class="section-divider" />
+  <p class="section-title">Recent entries</p>
+  <div id="sleep-list"></div>
+</section>
+
+<!-- ── ANALYSIS ────────────────────────────────────────────────────────────── -->
+<section id="tab-analysis" class="tab-content">
+  <div class="filter-bar">
+    <div class="preset-group">
+      <button class="preset-btn"        data-preset="7">7d</button>
+      <button class="preset-btn active" data-preset="30">30d</button>
+      <button class="preset-btn"        data-preset="90">3m</button>
+      <button class="preset-btn"        data-preset="0">All</button>
+    </div>
+    <div class="custom-range">
+      <span>From</span>
+      <input type="text" id="fromDate" placeholder="From…" />
+      <span>to</span>
+      <input type="text" id="toDate" placeholder="To…" />
+    </div>
+    <span id="analysis-loading" class="loading-indicator" style="display:none">Loading…</span>
+  </div>
+  <div id="analysis-error" class="error-msg" style="display:none"></div>
+  <div id="dashboard" style="display:none">
+    <p class="section-title">Overview</p>
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Sleep &amp; Awake Composition — per sleep day, with 7-day rolling average</div>
+      <div class="chart-scroll" id="compositionScroll">
+        <canvas id="compositionChart" height="300"></canvas>
+      </div>
+    </div>
+
+    <div class="heatmap-wrap">
+      <div class="chart-title">Sleep Timeline</div>
+      <div class="heatmap-legend">
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#4338ca"></div> Night sleep
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#0d9488"></div> Nap
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#d97706"></div> Below threshold
+          <span style="color:#94a3b8;font-size:0.75rem">(night &lt; 8h · nap &lt; 30m)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#ef4444"></div> Above threshold
+          <span style="color:#94a3b8;font-size:0.75rem">(night &gt; 16h · nap &gt; 3h)</span>
+        </div>
+      </div>
+      <div class="heatmap-scroll">
+        <canvas id="heatmapCanvas"></canvas>
+      </div>
+    </div>
+
+    <p class="section-title">Daily breakdown</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Sleep day</th>
+            <th>Total sleep</th>
+            <th>Night sleep</th>
+            <th>Split night?</th>
+            <th>Naps</th>
+            <th>Avg nap</th>
+            <th>Distribution</th>
+          </tr>
+        </thead>
+        <tbody id="dailyBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── MEDICINES ────────────────────────────────────────────────────────────── -->
+<section id="tab-medicines" class="tab-content">
+  <div class="med-header">
+    <p class="section-title" style="margin:0">Medicine schedules</p>
+    <button class="btn-secondary btn-sm" onclick="showAddMedForm()"><i data-lucide="plus"></i> Add schedule</button>
+  </div>
+  <div id="add-med-form" style="display:none"></div>
+  <div id="med-list" class="med-list"></div>
+  <div id="med-archived-wrap">
+    <button class="med-archived-toggle" onclick="toggleArchivedMeds()" id="med-archived-btn">
+      <i data-lucide="chevron-right" id="med-archived-chevron"></i> Show archived
+    </button>
+    <div id="med-archived-list" class="med-list" style="display:none"></div>
+  </div>
+</section>
+
+<!-- ── HEALTH ───────────────────────────────────────────────────────────────── -->
+<section id="tab-health" class="tab-content">
+  <div id="health-dashboard-view">
+    <div class="med-header">
+      <p class="section-title" style="margin:0">Health measurements</p>
+      <button class="btn-secondary btn-sm" id="health-add-btn" style="display:none" onclick="showHealthAddForm()"><i data-lucide="plus"></i> Add reading</button>
+    </div>
+    <div id="health-add-form-wrap" style="display:none"></div>
+    <div class="health-dashboard" id="health-dashboard"></div>
+  </div>
+  <div class="health-detail" id="health-detail-view">
+    <div class="health-detail-header">
+      <button class="health-back" onclick="closeHealthDetail()"><i data-lucide="arrow-left"></i></button>
+      <span class="health-detail-title" id="health-detail-title"></span>
+      <button class="btn-secondary btn-sm" style="margin-left:auto" onclick="showHealthAddForm()"><i data-lucide="plus"></i> Add reading</button>
+    </div>
+    <div id="health-add-form-detail" style="display:none"></div>
+    <div class="filter-bar" id="health-presets-wrap" style="margin-bottom:0.5rem">
+      <div class="preset-group" id="health-presets"></div>
+      <div class="custom-range">
+        <span>From</span>
+        <input type="text" id="health-from-date" placeholder="From…" />
+        <span>to</span>
+        <input type="text" id="health-to-date" placeholder="To…" />
+      </div>
+    </div>
+    <div class="health-chart-wrap"><canvas id="healthChart"></canvas></div>
+    <div class="health-history" id="health-history-list"></div>
+  </div>
+</section>
+
+<!-- ── SETTINGS ──────────────────────────────────────────────────────────────── -->
+<section id="tab-settings" class="tab-content">
+  <div id="settings-form" style="max-width:480px"></div>
+</section>
+
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let activeSession   = null;
+let timerInterval   = null;
+let trackerEntries  = [];
+let analysisPreset  = '30';
+let charts          = {};
+let appSettings     = {
+  // user prefs (localStorage)
+  date_format: 'dmy', time_format: '24h', units: 'metric', theme: 'dark',
+  // baby settings (server)
+  child_name: 'Baby', temp_low: 36.5, temp_high: 37.5, spo2_low: 95, hr_low: 80, hr_high: 130,
+};
+let fpFrom          = null;
+let fpTo            = null;
+let analysisReady   = false;
+let medicineSchedules      = [];
+let medicineCountdownTimer = null;
+let fpMedDt                = null;
+let archivedMedsVisible    = false;
+
+// ── Theme-aware chart colors ──────────────────────────────────────────────
+function tc() {
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  return {
+    legend:       light ? '#1e293b' : '#ffffff',
+    tick:         light ? '#475569' : '#94a3b8',
+    gridMinor:    light ? '#e2e8f0' : '#1e293b',
+    gridMajor:    light ? '#cbd5e1' : '#263348',
+    tooltipBg:    light ? '#ffffff' : '#1e293b',
+    tooltipBorder:light ? '#cbd5e1' : '#334155',
+    tooltipTitle: light ? '#1e293b' : '#e2e8f0',
+    tooltipBody:  light ? '#334155' : '#f1f5f9',
+    // heatmap canvas
+    canvasBg:     light ? '#f8fafc' : '#1e293b',
+    rowBg:        light ? '#f1f5f9' : '#0f1117',
+    label:        light ? '#475569' : '#94a3b8',
+    gridLine:     light ? '#cbd5e1' : '#334155',
+    gridLineFaint:light ? '#e2e8f4' : '#263348',
+  };
+}
+
+// ── Formatting helpers ────────────────────────────────────────────────────
+
+function fmtDuration(mins) {
+  if (mins == null || isNaN(mins)) return '—';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function fmtTime(date) {
+  if (appSettings.time_format === '12h')
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtLocalTime(isoStr) {
+  return fmtTime(new Date(isoStr));
+}
+
+function fmtDateShort(dateStr) {
+  const [m, d, y] = dateStr.split('-');
+  const dt     = new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+  const locale = appSettings.date_format === 'mdy' ? 'en-US' : 'en-GB';
+  return dt.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+}
+
+function fmtDateLong(dateStr) {
+  const [m, d, y] = dateStr.split('-');
+  const dt     = new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+  const locale = appSettings.date_format === 'mdy' ? 'en-US' : 'en-GB';
+  return dt.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function toYYYYMMDD(date) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function toDatetimeLocal(isoStr) {
+  const dt  = new Date(isoStr);
+  const pad = n => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+}
+
+// Returns the flatpickr dateFormat string based on current settings
+function fpDateFormat() {
+  const d = appSettings.date_format === 'mdy' ? 'm/d/Y' : 'd/m/Y';
+  const t = appSettings.time_format === '12h'  ? 'h:i K' : 'H:i';
+  return `${d} ${t}`;
+}
+
+// Initialise flatpickr combined datetime pickers for an edit form.
+// prefix: the id prefix used in editEntryForm (e.g. "edit-42" or "add")
+function initDatetimePickers(prefix, startISO, endISO) {
+  const opts = {
+    enableTime: true,
+    time_24hr: appSettings.time_format !== '12h',
+    dateFormat: fpDateFormat(),
+    allowInput: true,
+  };
+  const startEl = document.getElementById(`${prefix}-start`);
+  const endEl   = document.getElementById(`${prefix}-end`);
+  if (startEl) flatpickr(startEl, { ...opts, defaultDate: startISO ? new Date(startISO) : null });
+  if (endEl)   flatpickr(endEl,   { ...opts, defaultDate: endISO   ? new Date(endISO)   : null });
+}
+
+// Convert a flatpickr selectedDate (JS Date, local time) to UTC ISO string
+function fpDateToISO(d) {
+  return d ? d.toISOString().replace(/\.\d{3}Z$/, 'Z') : null;
+}
+
+// Shorthand for inline Lucide icon tags used in innerHTML strings
+function icon(name) { return `<i data-lucide="${name}"></i>`; }
+
+// Initialise flatpickr date-only pickers for the Analysis range bar
+function initAnalysisDatePickers() {
+  if (fpFrom) return; // already initialised
+  const dateFmt = appSettings.date_format === 'mdy' ? 'm/d/Y' : 'd/m/Y';
+  const onChange = () => {
+    analysisPreset = 'custom';
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    loadAnalysis();
+  };
+  fpFrom = flatpickr('#fromDate', { dateFormat: dateFmt, allowInput: true, onChange });
+  fpTo   = flatpickr('#toDate',   { dateFormat: dateFmt, allowInput: true, onChange });
+}
+
+// ── Sleep-day helpers (analysis) ──────────────────────────────────────────
+
+function prevDay(dateStr) {
+  const [m, d, y] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() - 1);
+  return `${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}-${dt.getFullYear()}`;
+}
+
+function sleepDayKey(dateStr, startMins) {
+  return startMins < 12 * 60 ? prevDay(dateStr) : dateStr;
+}
+
+function posFromNoon(startMins) {
+  return startMins >= 12 * 60 ? startMins - 12 * 60 : startMins + 12 * 60;
+}
+
+function dateToTs(dateStr) {
+  const [m, d, y] = dateStr.split('-');
+  return new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`).getTime();
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────
+
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimerDisplay, 1000);
+  updateTimerDisplay();
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+function updateTimerDisplay() {
+  if (!activeSession) return;
+  const mins = Math.floor((Date.now() - new Date(activeSession.start_time).getTime()) / 60000);
+  const fmt  = fmtDuration(mins);
+  const homeTimer  = document.getElementById('home-timer');
+  const sleepTimer = document.getElementById('sleep-timer');
+  if (homeTimer)  homeTimer.textContent  = fmt;
+  if (sleepTimer) sleepTimer.textContent = fmt;
+}
+
+// ── Sleep API ─────────────────────────────────────────────────────────────
+
+let fpSleepStart = null;
+
+async function startSleep() {
+  try {
+    const body = {};
+    if (fpSleepStart?.selectedDates[0]) body.start_time = fpDateToISO(fpSleepStart.selectedDates[0]);
+    const resp = await fetch('/api/sleep/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      alert(err.detail || 'Failed to start sleep');
+      return;
+    }
+    fpSleepStart?.destroy(); fpSleepStart = null;
+    activeSession = await resp.json();
+    renderHomeActiveSession();
+    renderSleepControl();
+    startTimer();
+  } catch { alert('Network error'); }
+}
+
+async function stopSleep(id) {
+  try {
+    const resp = await fetch(`/api/sleep/${id}/stop`, { method: 'POST' });
+    if (!resp.ok) {
+      const err = await resp.json();
+      alert(err.detail || 'Failed to stop sleep');
+      return;
+    }
+    const stopped = await resp.json();
+    activeSession = null;
+    stopTimer();
+    renderHomeActiveSession();
+    renderSleepControl();
+    trackerEntries.unshift(stopped);
+    renderSleepList(trackerEntries);
+  } catch { alert('Network error'); }
+}
+
+// ── Home tab ──────────────────────────────────────────────────────────────
+
+async function loadHome() {
+  try {
+    const [sleepResp, medResp, recentResp] = await Promise.all([
+      fetch('/api/sleep/active'),
+      fetch('/api/medicines'),
+      fetch('/api/sleep?limit=30'),
+    ]);
+    activeSession      = await sleepResp.json();
+    medicineSchedules  = await medResp.json();
+    const recentSleep  = await recentResp.json();
+    renderHomeActiveSession();
+    renderHomeMedWidget();
+    renderHomeSleepWidget(recentSleep);
+    if (activeSession) startTimer(); else stopTimer();
+  } catch { /* silent */ }
+  // Health widget loaded separately (5 API calls)
+  try {
+    const results = await Promise.all(
+      HEALTH_TYPES.map(t => fetch(`/api/health-events?event_type=${t.key}`).then(r => r.json()).catch(() => []))
+    );
+    HEALTH_TYPES.forEach((t, i) => { healthReadings[t.key] = results[i]; });
+    renderHomeHealthWidget();
+  } catch { /* silent */ }
+}
+
+function renderHomeMedWidget() {
+  const subEl  = document.getElementById('home-med-sub');
+  const widget = document.getElementById('home-med-widget');
+  if (!subEl) return;
+  if (!medicineSchedules.length) {
+    subEl.textContent = 'No schedules';
+    return;
+  }
+  const overdue  = medicineSchedules.filter(s => new Date(s.next_due) < new Date());
+  const dueSoon  = medicineSchedules.filter(s => {
+    const diff = (new Date(s.next_due) - Date.now()) / 60000;
+    return diff >= 0 && diff < 60;
+  });
+  if (overdue.length) {
+    widget.style.borderColor = '#ef4444';
+    subEl.innerHTML = `<span style="color:#ef4444;font-weight:600">${overdue.length} overdue</span>`;
+  } else if (dueSoon.length) {
+    widget.style.borderColor = '#f59e0b';
+    subEl.innerHTML = `<span style="color:#f59e0b;font-weight:600">${dueSoon.length} due soon</span>`;
+  } else {
+    widget.style.borderColor = '';
+    const next     = [...medicineSchedules].sort((a,b) => new Date(a.next_due)-new Date(b.next_due))[0];
+    const cd       = countdownInfo(next.next_due);
+    subEl.innerHTML = `Next in <strong>${cd.time}</strong>`;
+  }
+}
+
+function renderHomeActiveSession() {
+  const el = document.getElementById('home-active-session');
+  if (!activeSession) {
+    el.innerHTML = `
+      <div class="active-card">
+        <div class="active-card-label">No active sleep session</div>
+        <button class="btn-primary" onclick="startSleep()">${icon('play')} Start sleep</button>
+      </div>`;
+  } else {
+    const mins = Math.floor((Date.now() - new Date(activeSession.start_time).getTime()) / 60000);
+    el.innerHTML = `
+      <div class="active-card running">
+        <div class="active-card-label">Sleep in progress</div>
+        <div class="active-timer" id="home-timer">${fmtDuration(mins)}</div>
+        <div class="active-since">
+          Since ${fmtLocalTime(activeSession.start_time)}
+          <button class="btn-icon" style="margin-left:0.35rem;vertical-align:middle" onclick="editActiveStart(${activeSession.id},'home-active-session')" title="Edit start time">${icon('pencil')}</button>
+        </div>
+        <div id="home-edit-start-form" style="display:none;margin-top:0.5rem">
+          <div class="fp-dt-wrap" style="justify-content:center">
+            <input type="text" id="home-edit-start-dt" placeholder="New start time…">
+          </div>
+          <div style="display:flex;gap:0.5rem;justify-content:center;margin-top:0.5rem">
+            <button class="btn-secondary btn-sm" onclick="document.getElementById('home-edit-start-form').style.display='none'">Cancel</button>
+            <button class="btn-primary btn-sm" onclick="saveActiveStart(${activeSession.id},'home-edit-start-dt','home-active-session')">Save</button>
+          </div>
+        </div>
+        <button class="btn-stop" onclick="stopSleep(${activeSession.id})">${icon('square')} Stop</button>
+      </div>`;
+  }
+  lucide.createIcons();
+}
+
+let fpActiveStart = null;
+function editActiveStart(id, context) {
+  const formId = context === 'home-active-session' ? 'home-edit-start-form' : 'sleep-edit-start-form';
+  const inputId = context === 'home-active-session' ? 'home-edit-start-dt' : 'sleep-edit-start-dt';
+  const form = document.getElementById(formId);
+  if (!form) return;
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  if (form.style.display === 'block') {
+    if (fpActiveStart) { fpActiveStart.destroy(); fpActiveStart = null; }
+    fpActiveStart = flatpickr(`#${inputId}`, {
+      enableTime: true, time_24hr: appSettings.time_format !== '12h',
+      dateFormat: fpDateFormat(), defaultDate: new Date(activeSession.start_time), maxDate: new Date(),
+    });
+  }
+}
+
+async function saveActiveStart(id, inputId, rerender) {
+  const dt = fpActiveStart?.selectedDates[0];
+  if (!dt) { alert('Select a time'); return; }
+  try {
+    const resp = await fetch(`/api/sleep/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start_time: fpDateToISO(dt) }),
+    });
+    if (!resp.ok) { const e = await resp.json(); alert(e.detail || 'Failed'); return; }
+    fpActiveStart?.destroy(); fpActiveStart = null;
+    activeSession = await resp.json();
+    renderHomeActiveSession();
+    renderSleepControl();
+  } catch { alert('Network error'); }
+}
+
+function renderHomeSleepWidget(entries) {
+  const subEl  = document.getElementById('home-sleep-sub');
+  const widget = document.getElementById('home-sleep-widget');
+  if (!subEl) return;
+  if (!entries.length) { subEl.textContent = 'No entries yet'; return; }
+
+  const now      = new Date();
+  const cutoff24 = new Date(now - 24 * 3600 * 1000);
+  const cutoff48 = new Date(now - 48 * 3600 * 1000);
+  const recent   = entries.filter(e => e.end_time && new Date(e.start_time) >= cutoff48);
+
+  // Night sleep: last completed night session
+  const nights = recent.filter(e => e.type === 'night').sort((a,b) => new Date(b.start_time)-new Date(a.start_time));
+  // Naps: today (last 24h)
+  const naps = recent.filter(e => e.type !== 'night' && new Date(e.start_time) >= cutoff24);
+
+  const parts = [];
+  if (nights.length) {
+    const nightMins = nights[0].end_time
+      ? Math.round((new Date(nights[0].end_time) - new Date(nights[0].start_time)) / 60000) : null;
+    if (nightMins) parts.push(`<span style="color:var(--text-2);font-size:0.75rem">Last night <strong style="color:var(--text)">${fmtDuration(nightMins)}</strong></span>`);
+  }
+  if (naps.length) {
+    const napMins = naps.reduce((s, e) => s + Math.round((new Date(e.end_time) - new Date(e.start_time)) / 60000), 0);
+    parts.push(`<span style="color:var(--text-2);font-size:0.75rem">${naps.length} nap${naps.length>1?'s':''} · <strong style="color:var(--text)">${fmtDuration(napMins)}</strong></span>`);
+  }
+  if (!parts.length) {
+    const last = entries.find(e => e.end_time);
+    if (last) {
+      const ago = healthAgo(last.end_time);
+      parts.push(`<span style="color:var(--text-2);font-size:0.75rem">Last sleep <strong style="color:var(--text)">${ago}</strong></span>`);
+    }
+  }
+  subEl.innerHTML = parts.join('<br>') || 'No recent sleep';
+}
+
+// ── Sleep tracker tab ─────────────────────────────────────────────────────
+
+async function loadTracker() {
+  try {
+    const [activeResp, listResp] = await Promise.all([
+      fetch('/api/sleep/active'),
+      fetch('/api/sleep?limit=50'),
+    ]);
+    activeSession  = await activeResp.json();
+    const entries  = await listResp.json();
+    trackerEntries = entries.filter(e => e.id !== activeSession?.id);
+    renderSleepControl();
+    renderSleepList(trackerEntries);
+    if (activeSession) startTimer(); else stopTimer();
+  } catch { /* silent */ }
+}
+
+function renderSleepControl() {
+  const el = document.getElementById('sleep-control');
+  if (!activeSession) {
+    el.innerHTML = `
+      <div class="sleep-ctl">
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center">
+          <button class="btn-start-lg" onclick="startSleep()">${icon('play')} Start sleep</button>
+          <button class="btn-secondary" style="align-self:center" onclick="showAddForm()">${icon('plus')} Add entry</button>
+        </div>
+        <div style="margin-top:0.75rem">
+          <button class="btn-icon" style="font-size:0.78rem;color:var(--text-muted)" onclick="toggleSleepStartPicker()">${icon('clock')} Started earlier?</button>
+          <div id="sleep-start-picker" style="display:none;margin-top:0.5rem;display:none">
+            <div class="fp-dt-wrap" style="justify-content:center">
+              <input type="text" id="sleep-start-dt" placeholder="Select start time…">
+            </div>
+            <p style="font-size:0.72rem;color:var(--text-muted);margin-top:0.35rem;text-align:center">Session will start from this time</p>
+          </div>
+        </div>
+      </div>`;
+  } else {
+    const mins = Math.floor((Date.now() - new Date(activeSession.start_time).getTime()) / 60000);
+    el.innerHTML = `
+      <div class="sleep-ctl running">
+        <div class="sleep-timer-label">Currently sleeping</div>
+        <div class="sleep-timer" id="sleep-timer">${fmtDuration(mins)}</div>
+        <div class="sleep-since">
+          Started at ${fmtLocalTime(activeSession.start_time)}
+          <button class="btn-icon" style="margin-left:0.35rem;vertical-align:middle" onclick="editActiveStart(${activeSession.id},'sleep-control')" title="Edit start time">${icon('pencil')}</button>
+        </div>
+        <div id="sleep-edit-start-form" style="display:none;margin-top:0.5rem">
+          <div class="fp-dt-wrap" style="justify-content:center">
+            <input type="text" id="sleep-edit-start-dt" placeholder="New start time…">
+          </div>
+          <div style="display:flex;gap:0.5rem;justify-content:center;margin-top:0.5rem">
+            <button class="btn-secondary btn-sm" onclick="document.getElementById('sleep-edit-start-form').style.display='none'">Cancel</button>
+            <button class="btn-primary btn-sm" onclick="saveActiveStart(${activeSession.id},'sleep-edit-start-dt','sleep-control')">Save</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.75rem;justify-content:center">
+          <button class="btn-stop-lg" onclick="stopSleep(${activeSession.id})">${icon('square')} Stop</button>
+          <button class="btn-secondary" style="align-self:center" onclick="showAddForm()">${icon('plus')} Add entry</button>
+        </div>
+      </div>`;
+  }
+  lucide.createIcons();
+}
+
+function toggleSleepStartPicker() {
+  const el = document.getElementById('sleep-start-picker');
+  if (!el) return;
+  const visible = el.style.display !== 'none';
+  el.style.display = visible ? 'none' : 'block';
+  if (!visible) {
+    if (fpSleepStart) { fpSleepStart.destroy(); fpSleepStart = null; }
+    fpSleepStart = flatpickr('#sleep-start-dt', {
+      enableTime: true, time_24hr: appSettings.time_format !== '12h',
+      dateFormat: fpDateFormat(), defaultDate: new Date(Date.now() - 30 * 60000),
+      maxDate: new Date(),
+    });
+  } else {
+    fpSleepStart?.destroy(); fpSleepStart = null;
+  }
+}
+
+function renderSleepList(entries) {
+  const el = document.getElementById('sleep-list');
+  if (!entries.length) {
+    el.innerHTML = '<p style="color:#475569;font-size:0.85rem">No sleep entries yet.</p>';
+    return;
+  }
+  el.innerHTML = '';
+  for (const entry of entries) el.appendChild(makeSleepEntryEl(entry));
+  lucide.createIcons();
+}
+
+function makeSleepEntryEl(entry) {
+  const div   = document.createElement('div');
+  div.className = 'sleep-entry';
+  div.id        = `entry-${entry.id}`;
+
+  const start = new Date(entry.start_time);
+  const end   = entry.end_time ? new Date(entry.end_time) : null;
+  const mins  = end ? Math.round((end - start) / 60000) : null;
+  const badge = entry.type ? `<span class="badge badge-${entry.type}">${entry.type}</span>` : '';
+  const notes = entry.notes ? `<div class="entry-notes">${entry.notes}</div>` : '';
+
+  div.innerHTML = `
+    <div class="entry-row">
+      <div class="entry-info">
+        <span class="entry-date">${start.toLocaleDateString(appSettings.date_format === 'mdy' ? 'en-US' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+        <span class="entry-time">${fmtTime(start)} – ${end ? fmtTime(end) : '…'}</span>
+        <span class="entry-dur">${mins != null ? fmtDuration(mins) : '—'}</span>
+        ${badge}
+      </div>
+      <div class="entry-actions">
+        <button class="btn-icon" onclick="editEntry(${entry.id})" title="Edit">${icon('pencil')}</button>
+        <button class="btn-icon" onclick="deleteEntry(${entry.id})" title="Delete">${icon('trash-2')}</button>
+      </div>
+    </div>
+    ${notes}`;
+  return div;
+}
+
+function editEntryForm(id, type, notes, saveCall, cancelCall) {
+  return `
+    <div class="entry-edit-form">
+      <div class="edit-row">
+        <label>Start</label>
+        <div class="fp-dt-wrap"><input type="text" id="${id}-start" placeholder="Select start…" /></div>
+      </div>
+      <div class="edit-row">
+        <label>End</label>
+        <div class="fp-dt-wrap"><input type="text" id="${id}-end" placeholder="Select end…" /></div>
+      </div>
+      <div class="edit-row">
+        <label>Type</label>
+        <select id="${id}-type">
+          <option value="">Auto</option>
+          <option value="night" ${type === 'night' ? 'selected' : ''}>Night</option>
+          <option value="nap"   ${type === 'nap'   ? 'selected' : ''}>Nap</option>
+        </select>
+      </div>
+      <div class="edit-row">
+        <label>Notes</label>
+        <input type="text" id="${id}-notes" value="${notes}" placeholder="Optional" />
+      </div>
+      <div class="edit-actions">
+        <button class="btn-secondary btn-sm" onclick="${cancelCall}">Cancel</button>
+        <button class="btn-primary btn-sm"   onclick="${saveCall}">Save</button>
+      </div>
+    </div>`;
+}
+
+function editEntry(id) {
+  const entry = trackerEntries.find(e => e.id === id);
+  if (!entry) return;
+  document.getElementById(`entry-${id}`).innerHTML = editEntryForm(
+    `edit-${id}`,
+    entry.type || '', entry.notes || '',
+    `saveEntry(${id})`, `cancelEdit(${id})`,
+  );
+  initDatetimePickers(`edit-${id}`, entry.start_time, entry.end_time);
+}
+
+async function saveEntry(id) {
+  const fpStart = document.getElementById(`edit-${id}-start`)._flatpickr;
+  const fpEnd   = document.getElementById(`edit-${id}-end`)._flatpickr;
+  const typeVal  = document.getElementById(`edit-${id}-type`).value;
+  const notesVal = document.getElementById(`edit-${id}-notes`).value.trim();
+
+  const body = {};
+  if (fpStart?.selectedDates[0]) body.start_time = fpDateToISO(fpStart.selectedDates[0]);
+  if (fpEnd?.selectedDates[0])   body.end_time   = fpDateToISO(fpEnd.selectedDates[0]);
+  if (typeVal) body.type = typeVal;
+  body.notes = notesVal || null;
+
+  try {
+    const resp = await fetch(`/api/sleep/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) { const e = await resp.json(); alert(e.detail || 'Save failed'); return; }
+    const updated = await resp.json();
+    const idx = trackerEntries.findIndex(e => e.id === id);
+    if (idx !== -1) trackerEntries[idx] = updated;
+    document.getElementById(`entry-${id}`).replaceWith(makeSleepEntryEl(updated));
+    lucide.createIcons();
+  } catch { alert('Network error'); }
+}
+
+function cancelEdit(id) {
+  const entry = trackerEntries.find(e => e.id === id);
+  if (entry) {
+    document.getElementById(`entry-${id}`).replaceWith(makeSleepEntryEl(entry));
+    lucide.createIcons();
+  }
+}
+
+// ── Manual add entry ──────────────────────────────────────────────────────
+
+function showAddForm() {
+  if (document.getElementById('add-entry-form')) return;
+  const now     = new Date();
+  const earlier = new Date(now.getTime() - 60 * 60 * 1000);
+  const div = document.createElement('div');
+  div.id = 'add-entry-form';
+  div.className = 'sleep-entry';
+  div.style.borderColor = '#334155';
+  div.innerHTML = `<p class="section-title" style="margin-bottom:0.75rem">New entry</p>` +
+    editEntryForm('add', '', '', 'saveNewEntry()', 'hideAddForm()');
+  const list = document.getElementById('sleep-list');
+  list.insertBefore(div, list.firstChild);
+  initDatetimePickers('add', earlier.toISOString(), now.toISOString());
+  lucide.createIcons();
+}
+
+function hideAddForm() {
+  document.getElementById('add-entry-form')?.remove();
+}
+
+async function saveNewEntry() {
+  const fpStart = document.getElementById('add-start')._flatpickr;
+  const fpEnd   = document.getElementById('add-end')._flatpickr;
+  const typeVal  = document.getElementById('add-type').value;
+  const notesVal = document.getElementById('add-notes').value.trim();
+
+  if (!fpStart?.selectedDates[0]) { alert('Start date/time is required'); return; }
+
+  const body = {
+    start_time: fpDateToISO(fpStart.selectedDates[0]),
+    end_time:   fpEnd?.selectedDates[0] ? fpDateToISO(fpEnd.selectedDates[0]) : null,
+    type:       typeVal || null,
+    notes:      notesVal || null,
+  };
+
+  try {
+    const resp = await fetch('/api/sleep', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) { const e = await resp.json(); alert(e.detail || 'Failed to add entry'); return; }
+    const created = await resp.json();
+    hideAddForm();
+    trackerEntries.unshift(created);
+    renderSleepList(trackerEntries);
+  } catch { alert('Network error'); }
+}
+
+async function deleteEntry(id) {
+  if (!confirm('Delete this sleep entry?')) return;
+  try {
+    const resp = await fetch(`/api/sleep/${id}`, { method: 'DELETE' });
+    if (!resp.ok) { const e = await resp.json(); alert(e.detail || 'Delete failed'); return; }
+    trackerEntries = trackerEntries.filter(e => e.id !== id);
+    const el = document.getElementById(`entry-${id}`);
+    if (el) el.remove();
+  } catch { alert('Network error'); }
+}
+
+// ── Analysis: data processing ─────────────────────────────────────────────
+
+function processApiData(entries) {
+  const sessions = [];
+  for (const e of entries) {
+    if (!e.end_time) continue;
+    const start = new Date(e.start_time);
+    const end   = new Date(e.end_time);
+    const mins  = Math.round((end - start) / 60000);
+    if (mins <= 0) continue;
+    const startMins = start.getHours() * 60 + start.getMinutes();
+    const m = String(start.getMonth() + 1).padStart(2, '0');
+    const d = String(start.getDate()).padStart(2, '0');
+    const y = start.getFullYear();
+    const calDate = `${m}-${d}-${y}`;
+    sessions.push({
+      id: e.id, calDate,
+      sleepDay: sleepDayKey(calDate, startMins),
+      startMins,
+      pos:   posFromNoon(startMins),
+      mins,
+      night: e.type === 'night',
+    });
+  }
+  return sessions;
+}
+
+function nightSplitInfo(nightSessions) {
+  if (!nightSessions.length) return null;
+  const sorted = [...nightSessions].sort((a, b) => a.pos - b.pos);
+  const gaps = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i].pos - (sorted[i-1].pos + sorted[i-1].mins);
+    if (gap > 0) gaps.push(gap);
+  }
+  return { nightMins: sorted.reduce((s, n) => s + n.mins, 0), parts: sorted.length, gaps };
+}
+
+function computeStats(sessions) {
+  if (!sessions.length) return null;
+  const totalMins = sessions.reduce((s, r) => s + r.mins, 0);
+  const byDay = {};
+  for (const s of sessions) (byDay[s.sleepDay] = byDay[s.sleepDay] || []).push(s);
+  const days      = Object.keys(byDay).sort((a, b) => dateToTs(a) - dateToTs(b));
+  const dayTotals = days.map(d => byDay[d].reduce((s, v) => s + v.mins, 0));
+  const avgDaily  = Math.round(dayTotals.reduce((s, v) => s + v, 0) / dayTotals.length);
+  const naps      = sessions.filter(s => !s.night);
+  const avgNap    = naps.length ? Math.round(naps.reduce((s, n) => s + n.mins, 0) / naps.length) : null;
+  const daysWithNight = days.filter(d => byDay[d].some(s => s.night));
+  const avgNight = daysWithNight.length
+    ? Math.round(daysWithNight.reduce((s, d) => s + byDay[d].filter(v => v.night).reduce((ms, v) => ms + v.mins, 0), 0) / daysWithNight.length)
+    : null;
+  const splitNights = days.filter(d => {
+    const info = nightSplitInfo(byDay[d].filter(s => s.night));
+    return info && info.parts > 1;
+  }).length;
+  return {
+    totalSessions: sessions.length, totalMins, avgDaily,
+    maxDaily: Math.max(...dayTotals),
+    maxSession: Math.max(...sessions.map(s => s.mins)),
+    avgNap, avgNight,
+    napCount: naps.length, nightCount: sessions.filter(s => s.night).length,
+    daysWithNight: daysWithNight.length, splitNights,
+    spanDays: days.length,
+    firstDate: fmtDateLong(days[0]), lastDate: fmtDateLong(days[days.length - 1]),
+    byDay, days, dayTotals,
+  };
+}
+
+// ── Analysis: rendering ───────────────────────────────────────────────────
+
+function renderStats(stats) {
+  const grid = document.getElementById('statsGrid');
+  grid.innerHTML = '';
+  const pct = (n, d) => d ? `${Math.round(n / d * 100)}%` : '—';
+  const cards = [
+    { label: 'Total sessions',      value: stats.totalSessions },
+    { label: 'Total sleep tracked', value: fmtDuration(stats.totalMins), accent: true },
+    { label: 'Avg daily sleep',     value: fmtDuration(stats.avgDaily),  accent: true },
+    { label: 'Longest session',     value: fmtDuration(stats.maxSession) },
+    { label: 'Avg nightly sleep',   value: fmtDuration(stats.avgNight),
+      sub: `across ${stats.daysWithNight} nights` },
+    { label: 'Avg nap',             value: fmtDuration(stats.avgNap),
+      sub: `${stats.napCount} naps (${pct(stats.napCount, stats.totalSessions)})` },
+    { label: 'Split nights',        value: stats.splitNights,
+      sub: `of ${stats.spanDays} sleep days (${pct(stats.splitNights, stats.spanDays)})` },
+    { label: 'Sleep days tracked',  value: stats.spanDays },
+    { label: 'Period', value: stats.firstDate, sub: `to ${stats.lastDate}`, small: true },
+  ];
+  for (const c of cards) {
+    const div = document.createElement('div');
+    div.className = 'stat-card' + (c.accent ? ' accent' : '');
+    div.innerHTML = `
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-value" style="${c.small ? 'font-size:1rem' : ''}">${c.value}</div>
+      ${c.sub ? `<div class="stat-sub">${c.sub}</div>` : ''}`;
+    grid.appendChild(div);
+  }
+}
+
+function renderCompositionChart(stats) {
+  if (charts.composition) { charts.composition.destroy(); charts.composition = null; }
+  const scroll = document.getElementById('compositionScroll');
+  scroll.innerHTML = '<canvas id="compositionChart" height="300"></canvas>';
+  const canvas = document.getElementById('compositionChart');
+  const { days, byDay } = stats;
+  if (!days.length) return;
+
+  const nightH = [], napH = [], dayAwakeH = [], splitH = [], rollingH = [], labels = [];
+  for (let i = 0; i < days.length; i++) {
+    const d          = days[i];
+    const sessions   = byDay[d];
+    const nightInfo  = nightSplitInfo(sessions.filter(s => s.night));
+    const nightMins  = nightInfo ? nightInfo.nightMins : 0;
+    const splitMins  = nightInfo ? nightInfo.gaps.reduce((s, g) => s + g, 0) : 0;
+    const napMins    = sessions.filter(s => !s.night).reduce((s, v) => s + v.mins, 0);
+    const dayAwakeMins = Math.max(0, 1440 - nightMins - napMins - splitMins);
+    nightH.push(+(nightMins / 60).toFixed(2));
+    napH.push(+(napMins / 60).toFixed(2));
+    dayAwakeH.push(+(dayAwakeMins / 60).toFixed(2));
+    splitH.push(+(splitMins / 60).toFixed(2));
+    const winStart = Math.max(0, i - 6);
+    const winDays  = days.slice(winStart, i + 1);
+    const avgMins  = winDays.reduce((s, wd) => s + byDay[wd].reduce((ms, v) => ms + v.mins, 0), 0) / winDays.length;
+    rollingH.push(+(avgMins / 60).toFixed(2));
+    labels.push(fmtDateShort(d));
+  }
+  const minW = Math.max(scroll.clientWidth || 600, days.length * 24 + 80);
+  canvas.style.width = minW + 'px';
+  canvas.width = minW;
+
+  charts.composition = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Night sleep',             data: nightH,    backgroundColor: '#4338ca', stack: 'sleep',  order: 2 },
+        { label: 'Naps',                    data: napH,      backgroundColor: '#0d9488', stack: 'sleep',  order: 2 },
+        { label: 'Daytime awake',           data: dayAwakeH, backgroundColor: '#1e3a5f', stack: 'awake',  order: 2 },
+        { label: 'Split awake',             data: splitH,    backgroundColor: '#b45309', stack: 'awake',  order: 2 },
+        { label: '7-day avg (total sleep)', data: rollingH,  type: 'line', borderColor: '#fbbf24',
+          backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, order: 1 },
+      ],
+    },
+    options: {
+      responsive: false, animation: false,
+      plugins: {
+        legend: { labels: { color: tc().legend, font: { size: 12 }, boxWidth: 12, padding: 16 } },
+        tooltip: {
+          mode: 'index',
+          callbacks: {
+            label(ctx) {
+              const v = ctx.raw, label = ctx.dataset.label;
+              if (v === 0 && label !== '7-day avg (total sleep)') return null;
+              return `  ${label}: ${fmtDuration(Math.round(v * 60))}`;
+            },
+          },
+          backgroundColor: tc().tooltipBg, borderColor: tc().tooltipBorder, borderWidth: 1,
+          titleColor: tc().tooltipTitle, bodyColor: tc().tooltipBody,
+        },
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: { color: tc().tick, font: { size: 10 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 30 },
+          grid: { color: tc().gridMinor },
+        },
+        y: {
+          stacked: true, min: 0, max: 24,
+          ticks: { color: tc().tick, font: { size: 10 }, stepSize: 4, callback: v => `${v}h` },
+          grid: { color: tc().gridMajor },
+        },
+      },
+    },
+  });
+}
+
+function renderHeatmap(sessions, days) {
+  const canvas = document.getElementById('heatmapCanvas');
+  const ctx    = canvas.getContext('2d');
+  const dpr    = window.devicePixelRatio || 1;
+  const LABEL_W = 68, PAD_R = 8, AXIS_H = 22, ROW_H = 14, ROW_GAP = 3;
+  const container = canvas.parentElement;
+  const W = Math.max(container.clientWidth || 600, 500);
+  const H = AXIS_H + days.length * (ROW_H + ROW_GAP) + ROW_GAP;
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+  const GRID_W = W - LABEL_W - PAD_R;
+  ctx.fillStyle = tc().canvasBg; ctx.fillRect(0, 0, W, H);
+
+  const hourMarks = [
+    { label: '12', mins: 0 },    { label: '14', mins: 120 },  { label: '16', mins: 240 },
+    { label: '18', mins: 360 },  { label: '20', mins: 480 },  { label: '22', mins: 600 },
+    { label: '00', mins: 720 },  { label: '02', mins: 840 },  { label: '04', mins: 960 },
+    { label: '06', mins: 1080 }, { label: '08', mins: 1200 }, { label: '10', mins: 1320 },
+    { label: '12', mins: 1440 },
+  ];
+  ctx.font = `10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  ctx.textAlign = 'center';
+  for (const { label, mins } of hourMarks) {
+    const x = LABEL_W + (mins / 1440) * GRID_W;
+    ctx.fillStyle = tc().label;
+    ctx.fillText(label, x, AXIS_H - 5);
+    if (mins > 0 && mins < 1440) {
+      ctx.strokeStyle = mins === 720 ? tc().gridLine : tc().gridLineFaint;
+      ctx.lineWidth   = mins === 720 ? 1.5 : 0.75;
+      ctx.beginPath(); ctx.moveTo(x, AXIS_H); ctx.lineTo(x, H); ctx.stroke();
+    }
+  }
+
+  const byDay = {};
+  for (const s of sessions) (byDay[s.sleepDay] = byDay[s.sleepDay] || []).push(s);
+  const nightTotalByDay = {};
+  for (const [day, ds] of Object.entries(byDay))
+    nightTotalByDay[day] = ds.filter(s => s.night).reduce((sum, s) => sum + s.mins, 0);
+
+  function sessionColor(s, day) {
+    if (s.night) {
+      const total = nightTotalByDay[day] || 0;
+      if (total > 16 * 60) return '#ef4444';
+      if (total < 8 * 60)  return '#d97706';
+      return '#4338ca';
+    } else {
+      if (s.mins > 3 * 60) return '#ef4444';
+      if (s.mins < 30)     return '#d97706';
+      return '#0d9488';
+    }
+  }
+
+  for (let i = 0; i < [...days].reverse().length; i++) {
+    const day = [...days].reverse()[i];
+    const y   = AXIS_H + ROW_GAP + i * (ROW_H + ROW_GAP);
+    ctx.fillStyle = tc().rowBg; ctx.fillRect(LABEL_W, y, GRID_W, ROW_H);
+    ctx.fillStyle = tc().label; ctx.textAlign = 'right';
+    ctx.font = `10px -apple-system, sans-serif`;
+    ctx.fillText(fmtDateShort(day), LABEL_W - 5, y + ROW_H - 3);
+    for (const s of byDay[day] || []) {
+      const x = LABEL_W + (s.pos / 1440) * GRID_W;
+      const w = Math.min(Math.max(2, (s.mins / 1440) * GRID_W), LABEL_W + GRID_W - x);
+      if (w <= 0) continue;
+      ctx.fillStyle = sessionColor(s, day);
+      ctx.fillRect(x, y + 1, w, ROW_H - 2);
+    }
+  }
+}
+
+function renderTable(stats) {
+  const tbody = document.getElementById('dailyBody');
+  tbody.innerHTML = '';
+  for (const day of [...stats.days].reverse()) {
+    const sessions  = stats.byDay[day];
+    const total     = sessions.reduce((s, v) => s + v.mins, 0);
+    const naps      = sessions.filter(s => !s.night);
+    const avgNap    = naps.length ? Math.round(naps.reduce((s, n) => s + n.mins, 0) / naps.length) : null;
+    const nightInfo = nightSplitInfo(sessions.filter(s => s.night));
+    const barWidth  = Math.round((total / stats.maxDaily) * 100);
+    let nightCell, splitCell;
+    if (!nightInfo) {
+      nightCell = '<span class="muted">—</span>'; splitCell = '<span class="muted">—</span>';
+    } else if (nightInfo.parts === 1) {
+      nightCell = fmtDuration(nightInfo.nightMins); splitCell = '<span class="muted">—</span>';
+    } else {
+      nightCell = fmtDuration(nightInfo.nightMins);
+      splitCell = `<span class="split-badge">${nightInfo.parts} parts · ${nightInfo.gaps.map(g => fmtDuration(g)).join(' + ')} awake</span>`;
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDateLong(day)}</td>
+      <td>${fmtDuration(total)}</td>
+      <td>${nightCell}</td>
+      <td>${splitCell}</td>
+      <td>${naps.length || '<span class="muted">—</span>'}</td>
+      <td>${avgNap ? fmtDuration(avgNap) : '<span class="muted">—</span>'}</td>
+      <td><div class="bar-cell"><span style="color:#475569;font-size:0.75rem">${fmtDuration(total)}</span><div class="bar" style="width:${barWidth}px"></div></div></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+// ── Analysis: loading ─────────────────────────────────────────────────────
+
+async function loadAnalysis() {
+  const fromDateObj = fpFrom?.selectedDates[0] || null;
+  const toDateObj   = fpTo?.selectedDates[0]   || null;
+  const fromDate    = fromDateObj ? toYYYYMMDD(fromDateObj) : '';
+  const toDate      = toDateObj   ? toYYYYMMDD(toDateObj)   : '';
+
+  document.getElementById('analysis-loading').style.display = '';
+  document.getElementById('analysis-error').style.display   = 'none';
+  document.getElementById('dashboard').style.display        = 'none';
+
+  const params = new URLSearchParams({ limit: 5000 });
+  if (fromDate) {
+    const from = new Date(fromDate + 'T00:00:00');
+    from.setHours(from.getHours() - 12);
+    params.set('from', from.toISOString().replace(/\.\d{3}Z$/, 'Z'));
+  }
+  if (toDate) {
+    const to = new Date(toDate + 'T23:59:59');
+    to.setHours(to.getHours() + 12);
+    params.set('to', to.toISOString().replace(/\.\d{3}Z$/, 'Z'));
+  }
+
+  try {
+    const resp = await fetch('/api/sleep?' + params);
+    if (!resp.ok) throw new Error('API error ' + resp.status);
+    const entries  = await resp.json();
+    document.getElementById('analysis-loading').style.display = 'none';
+
+    let sessions = processApiData(entries);
+
+    // Narrow to the exact sleep-day range after local-time conversion
+    if (fromDate || toDate) {
+      sessions = sessions.filter(s => {
+        const ts   = dateToTs(s.sleepDay);
+        const from = fromDate ? new Date(fromDate).getTime() : -Infinity;
+        const to   = toDate   ? new Date(toDate).getTime()   :  Infinity;
+        return ts >= from && ts <= to;
+      });
+    }
+
+    if (!sessions.length) {
+      document.getElementById('analysis-error').textContent = 'No sleep data for the selected period.';
+      document.getElementById('analysis-error').style.display = '';
+      return;
+    }
+
+    document.getElementById('dashboard').style.display = 'block';
+    const stats = computeStats(sessions);
+    renderStats(stats);
+    renderCompositionChart(stats);
+    renderHeatmap(sessions, stats.days);
+    renderTable(stats);
+  } catch (e) {
+    document.getElementById('analysis-loading').style.display = 'none';
+    document.getElementById('analysis-error').textContent = 'Failed to load data: ' + e.message;
+    document.getElementById('analysis-error').style.display = '';
+  }
+}
+
+function setAnalysisPreset(preset) {
+  analysisPreset = preset;
+  document.querySelectorAll('.preset-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.preset === preset));
+  const today = new Date();
+  if (preset === '0') {
+    fpFrom?.clear(false);
+    fpTo?.clear(false);
+  } else {
+    const days = parseInt(preset);
+    const from = new Date(today);
+    from.setDate(from.getDate() - (days - 1));
+    fpFrom?.setDate(from, false);
+    fpTo?.setDate(today, false);
+  }
+  loadAnalysis();
+}
+
+// ── Settings tab ──────────────────────────────────────────────────────────
+
+const LOCAL_PREF_KEYS = ['date_format', 'time_format', 'units', 'theme'];
+
+function applyAppSettings() {
+  document.documentElement.lang = appSettings.date_format === 'dmy' ? 'en-GB' : 'en-US';
+  const name = appSettings.child_name || 'Baby';
+  document.title = `${name} · Baby Tracker`;
+  const el = document.getElementById('app-child-name');
+  if (el) el.textContent = name;
+  // Apply theme
+  document.documentElement.setAttribute('data-theme', appSettings.theme || 'dark');
+  // Swap flatpickr stylesheet
+  const fpLink = document.querySelector('link[href*="flatpickr"]');
+  if (fpLink) {
+    fpLink.href = appSettings.theme === 'light'
+      ? 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css'
+      : 'https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.min.css';
+  }
+}
+
+async function loadSettings() {
+  // Load user prefs from localStorage
+  LOCAL_PREF_KEYS.forEach(k => {
+    const v = localStorage.getItem(k);
+    if (v) appSettings[k] = v;
+  });
+  // Load baby settings from server
+  try {
+    const server = await fetch('/api/settings').then(r => r.json());
+    Object.assign(appSettings, {
+      child_name: server.child_name || 'Baby',
+      temp_low:  +server.temp_low  || 36.5,
+      temp_high: +server.temp_high || 37.5,
+      spo2_low:  +server.spo2_low  || 95,
+      hr_low:    +server.hr_low    || 80,
+      hr_high:   +server.hr_high   || 130,
+    });
+  } catch { /* use defaults */ }
+  applyAppSettings();
+}
+
+function renderSettingsForm() {
+  const s = appSettings;
+  const tempLow  = appSettings.units === 'imperial' ? ((+s.temp_low  * 9/5) + 32).toFixed(1) : s.temp_low;
+  const tempHigh = appSettings.units === 'imperial' ? ((+s.temp_high * 9/5) + 32).toFixed(1) : s.temp_high;
+  const tempUnit = appSettings.units === 'imperial' ? '°F' : '°C';
+  document.getElementById('settings-form').innerHTML = `
+    <div class="settings-group">
+      <div class="settings-group-title">Your preferences <small style="font-weight:400;color:#475569">Saved to this device</small></div>
+      <div class="settings-row">
+        <div class="settings-label">Date format<small>How dates are shown</small></div>
+        <div class="radio-group">
+          <label><input type="radio" name="date_format" value="dmy" ${s.date_format === 'dmy' ? 'checked' : ''} onchange="previewSetting('date_format','dmy')"><span>DD/MM/YYYY</span></label>
+          <label><input type="radio" name="date_format" value="mdy" ${s.date_format === 'mdy' ? 'checked' : ''} onchange="previewSetting('date_format','mdy')"><span>MM/DD/YYYY</span></label>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-label">Time format<small>12 or 24-hour clock</small></div>
+        <div class="radio-group">
+          <label><input type="radio" name="time_format" value="24h" ${s.time_format === '24h' ? 'checked' : ''} onchange="previewSetting('time_format','24h')"><span>24h</span></label>
+          <label><input type="radio" name="time_format" value="12h" ${s.time_format === '12h' ? 'checked' : ''} onchange="previewSetting('time_format','12h')"><span>12h</span></label>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-label">Units<small>Health measurements</small></div>
+        <div class="radio-group">
+          <label><input type="radio" name="units" value="metric" ${s.units === 'metric' ? 'checked' : ''} onchange="previewSetting('units','metric')"><span>Metric (°C · kg · cm)</span></label>
+          <label><input type="radio" name="units" value="imperial" ${s.units === 'imperial' ? 'checked' : ''} onchange="previewSetting('units','imperial')"><span>Imperial (°F · lbs · in)</span></label>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-label">Theme<small>Applied to this device only</small></div>
+        <div class="radio-group">
+          <label><input type="radio" name="theme" value="dark" ${s.theme === 'dark' || !s.theme ? 'checked' : ''} onchange="previewSetting('theme','dark')"><span>Dark</span></label>
+          <label><input type="radio" name="theme" value="light" ${s.theme === 'light' ? 'checked' : ''} onchange="previewSetting('theme','light')"><span>Light</span></label>
+        </div>
+      </div>
+      <div class="settings-save-row">
+        <button class="btn-secondary" onclick="saveLocalSettings(this)">Save preferences</button>
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Baby settings <small style="font-weight:400;color:#475569">Shared across all devices</small></div>
+      <div class="settings-row">
+        <div class="settings-label">Child name<small>Used in title &amp; notifications</small></div>
+        <input type="text" id="s-child-name" value="${s.child_name}" class="settings-input" style="width:10rem">
+      </div>
+      <div class="settings-row">
+        <div class="settings-label" id="s-temp-label">Temperature<small>Normal range (${tempUnit})</small></div>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <input type="number" id="s-temp-low"  step="0.1" value="${tempLow}"  class="settings-input" style="width:5.5rem">
+          <span class="settings-sep">–</span>
+          <input type="number" id="s-temp-high" step="0.1" value="${tempHigh}" class="settings-input" style="width:5.5rem">
+          <span class="settings-sep s-temp-unit" style="font-size:0.8rem">${tempUnit}</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-label">SpO₂<small>Low threshold (%)</small></div>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <input type="number" id="s-spo2-low" step="1" min="80" max="100" value="${s.spo2_low}" class="settings-input" style="width:5.5rem">
+          <span class="settings-sep" style="font-size:0.8rem">%</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-label">Heart rate<small>Normal range (bpm)</small></div>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <input type="number" id="s-hr-low"  step="1" value="${s.hr_low}"  class="settings-input" style="width:5.5rem">
+          <span class="settings-sep">–</span>
+          <input type="number" id="s-hr-high" step="1" value="${s.hr_high}" class="settings-input" style="width:5.5rem">
+          <span class="settings-sep" style="font-size:0.8rem">bpm</span>
+        </div>
+      </div>
+      <div class="settings-save-row">
+        <button class="btn-primary" onclick="saveBabySettings(this)">Save baby settings</button>
+      </div>
+    </div>`;
+}
+
+function previewSetting(key, value) {
+  appSettings[key] = value;
+  applyAppSettings();
+  if (key === 'units') {
+    // Re-render temperature threshold inputs with converted values
+    const isImperial = value === 'imperial';
+    const tempLow  = isImperial ? ((+appSettings.temp_low  * 9/5) + 32).toFixed(1) : appSettings.temp_low;
+    const tempHigh = isImperial ? ((+appSettings.temp_high * 9/5) + 32).toFixed(1) : appSettings.temp_high;
+    const unit     = isImperial ? '°F' : '°C';
+    const lowEl    = document.getElementById('s-temp-low');
+    const highEl   = document.getElementById('s-temp-high');
+    if (lowEl)  lowEl.value  = tempLow;
+    if (highEl) highEl.value = tempHigh;
+    document.querySelectorAll('.s-temp-unit').forEach(el => el.textContent = unit);
+    const labelSmall = document.querySelector('#s-temp-label small');
+    if (labelSmall) labelSmall.textContent = `Normal range (${unit})`;
+  }
+}
+
+function flashSaved(btn, label = 'Saved ✓') {
+  const orig = btn.textContent;
+  btn.textContent = label;
+  btn.disabled = true;
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+}
+
+function saveLocalSettings(btn) {
+  LOCAL_PREF_KEYS.forEach(k => {
+    const el = document.querySelector(`input[name=${k}]:checked`);
+    if (el) { appSettings[k] = el.value; localStorage.setItem(k, el.value); }
+  });
+  applyAppSettings();
+  flashSaved(btn);
+}
+
+async function saveBabySettings(btn) {
+  const isImperial = appSettings.units === 'imperial';
+  const rawTempLow  = parseFloat(document.getElementById('s-temp-low').value);
+  const rawTempHigh = parseFloat(document.getElementById('s-temp-high').value);
+  const body = {
+    child_name: document.getElementById('s-child-name').value.trim() || 'Baby',
+    temp_low:   String(isImperial ? ((rawTempLow  - 32) * 5/9).toFixed(2) : rawTempLow),
+    temp_high:  String(isImperial ? ((rawTempHigh - 32) * 5/9).toFixed(2) : rawTempHigh),
+    spo2_low:   document.getElementById('s-spo2-low').value,
+    hr_low:     document.getElementById('s-hr-low').value,
+    hr_high:    document.getElementById('s-hr-high').value,
+  };
+  try {
+    const resp = await fetch('/api/settings', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) { alert('Failed to save'); return; }
+    const server = await resp.json();
+    Object.assign(appSettings, {
+      child_name: server.child_name,
+      temp_low: +server.temp_low, temp_high: +server.temp_high,
+      spo2_low: +server.spo2_low, hr_low: +server.hr_low, hr_high: +server.hr_high,
+    });
+    applyAppSettings();
+    flashSaved(btn);
+  } catch { alert('Network error'); }
+}
+
+// ── Medicine tracker ──────────────────────────────────────────────────────
+
+function countdownInfo(nextDueISO) {
+  const diffMins = Math.round((new Date(nextDueISO).getTime() - Date.now()) / 60000);
+  if (diffMins < 0) {
+    const overdueMins = -diffMins;
+    const time = overdueMins > 7 * 24 * 60 ? '∞' : fmtDuration(overdueMins);
+    return { label: 'Overdue', time, status: 'overdue' };
+  } else if (diffMins < 60) {
+    return { label: 'Due in', time: `${diffMins}m`, status: 'due-soon' };
+  } else {
+    const h = Math.floor(diffMins / 60), m = diffMins % 60;
+    return { label: 'Due in', time: m ? `${h}h ${m}m` : `${h}h`, status: 'ok' };
+  }
+}
+
+function makeMedCardEl(sched, archived = false) {
+  const div = document.createElement('div');
+  div.id = `med-${sched.id}`;
+  div.className = 'med-card' + (archived ? ' archived' : '');
+  const cd = countdownInfo(sched.next_due);
+  if (!archived) div.classList.add(cd.status);
+  const hours = sched.interval_hours % 1 === 0
+    ? `${sched.interval_hours}h` : `${sched.interval_hours}h`;
+  div.innerHTML = `
+    <div class="med-card-main">
+      <div class="med-info">
+        <div class="med-name">${sched.name}</div>
+        <div class="med-meta">${sched.dose} · every ${hours}</div>
+      </div>
+      <div class="med-countdown med-countdown-${archived ? 'ok' : cd.status}">
+        <div class="med-countdown-label">${archived ? 'Archived' : cd.label}</div>
+        <div class="med-countdown-time">${archived ? '—' : cd.time}</div>
+      </div>
+      ${archived
+        ? `<button class="btn-secondary btn-sm" onclick="restoreMed(${sched.id})">${icon('refresh-cw')} Restore</button>`
+        : `<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+            <button class="btn-taken" onclick="markTaken(${sched.id})">${icon('check')} Mark taken</button>
+            <button class="btn-secondary btn-sm" onclick="showMarkTakenForm(${sched.id})" title="Log past dose">${icon('clock')}</button>
+           </div>`
+      }
+    </div>
+    <div class="med-card-footer">
+      ${archived ? '' : `<button class="btn-icon" onclick="toggleMedHistory(${sched.id})" title="History">${icon('clock-3')}</button>`}
+      <button class="btn-icon" onclick="editMed(${sched.id})" title="Edit">${icon('pencil')}</button>
+      ${archived
+        ? `<button class="btn-icon" onclick="deleteMedSchedule(${sched.id})" title="Delete">${icon('trash-2')}</button>`
+        : `<button class="btn-icon" onclick="archiveMed(${sched.id})" title="Archive">${icon('archive')}</button>`
+      }
+    </div>
+    <div class="med-history" id="med-history-${sched.id}" style="display:none"></div>`;
+  return div;
+}
+
+async function loadMedicines() {
+  try {
+    const resp = await fetch('/api/medicines');
+    medicineSchedules = await resp.json();
+    renderMedicineList();
+    startMedicineCountdown();
+    if (archivedMedsVisible) loadArchivedMeds();
+  } catch { /* silent */ }
+}
+
+function renderMedicineList() {
+  const el = document.getElementById('med-list');
+  if (!medicineSchedules.length) {
+    el.innerHTML = '<p class="med-empty">No active medicine schedules.</p>';
+    lucide.createIcons(); return;
+  }
+  const sorted = [...medicineSchedules].sort((a, b) => new Date(a.next_due) - new Date(b.next_due));
+  el.innerHTML = '';
+  for (const s of sorted) el.appendChild(makeMedCardEl(s));
+  lucide.createIcons();
+}
+
+function startMedicineCountdown() {
+  if (medicineCountdownTimer) clearInterval(medicineCountdownTimer);
+  medicineCountdownTimer = setInterval(() => {
+    for (const sched of medicineSchedules) {
+      const card = document.getElementById(`med-${sched.id}`);
+      if (!card || card.classList.contains('archived')) continue;
+      const cd = countdownInfo(sched.next_due);
+      card.className = `med-card ${cd.status}`;
+      const cdEl = card.querySelector('.med-countdown');
+      if (cdEl) {
+        cdEl.className = `med-countdown med-countdown-${cd.status}`;
+        cdEl.querySelector('.med-countdown-label').textContent = cd.label;
+        cdEl.querySelector('.med-countdown-time').textContent  = cd.time;
+      }
+    }
+  }, 30000);
+}
+
+async function markTaken(id) {
+  try {
+    await fetch(`/api/medicines/${id}/taken`, { method: 'POST' });
+    await loadMedicines();
+  } catch { alert('Network error'); }
+}
+
+let fpMarkTaken = null;
+function showMarkTakenForm(id) {
+  const histEl = document.getElementById(`med-history-${id}`);
+  if (!histEl) return;
+  histEl.style.display = 'block';
+  histEl.innerHTML = `
+    <div class="med-form" style="margin-top:0.5rem">
+      <div class="med-form-grid">
+        <div class="edit-row"><label>Taken at</label><div class="fp-dt-wrap"><input type="text" id="mt-dt-${id}" placeholder="Select…"></div></div>
+        <div class="edit-row"><label>Notes</label><input type="text" id="mt-notes-${id}" placeholder="Optional" style="flex:1"></div>
+      </div>
+      <div class="edit-actions">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('med-history-${id}').style.display='none'">Cancel</button>
+        <button class="btn-primary btn-sm" onclick="saveMarkTaken(${id})">Save dose</button>
+      </div>
+    </div>`;
+  if (fpMarkTaken) { fpMarkTaken.destroy(); fpMarkTaken = null; }
+  fpMarkTaken = flatpickr(`#mt-dt-${id}`, {
+    enableTime: true, time_24hr: appSettings.time_format !== '12h',
+    dateFormat: fpDateFormat(), defaultDate: new Date(),
+  });
+}
+
+async function saveMarkTaken(id) {
+  const dt    = fpMarkTaken?.selectedDates[0];
+  const notes = document.getElementById(`mt-notes-${id}`)?.value.trim() || null;
+  if (!dt) { alert('Please select a time'); return; }
+  try {
+    await fetch(`/api/medicines/${id}/taken`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taken_at: fpDateToISO(dt), notes }),
+    });
+    fpMarkTaken?.destroy(); fpMarkTaken = null;
+    await loadMedicines();
+  } catch { alert('Network error'); }
+}
+
+async function toggleMedHistory(id) {
+  const histEl = document.getElementById(`med-history-${id}`);
+  if (!histEl) return;
+  if (histEl.style.display !== 'none') { histEl.style.display = 'none'; return; }
+  histEl.innerHTML = '<p class="med-history-empty">Loading…</p>';
+  histEl.style.display = 'block';
+  try {
+    const doses = await fetch(`/api/doses?schedule_id=${id}`).then(r => r.json());
+    if (!doses.length) { histEl.innerHTML = '<p class="med-history-empty">No doses recorded yet.</p>'; return; }
+    const locale = appSettings.date_format === 'mdy' ? 'en-US' : 'en-GB';
+    histEl.innerHTML = doses.slice(0, 15).map(d => `
+      <div class="med-history-entry">
+        <span class="med-history-time">${new Date(d.taken_at).toLocaleDateString(locale, { day:'numeric', month:'short' })} ${fmtLocalTime(d.taken_at)}</span>
+        ${d.notes ? `<span class="med-history-note">${d.notes}</span>` : ''}
+        <button class="btn-icon" onclick="deleteDose(${d.id},${id})" title="Delete dose">${icon('trash-2')}</button>
+      </div>`).join('');
+    lucide.createIcons();
+  } catch { histEl.innerHTML = '<p class="med-history-empty" style="color:#ef4444">Failed to load.</p>'; }
+}
+
+async function deleteDose(doseId, schedId) {
+  if (!confirm('Delete this dose record?')) return;
+  try {
+    await fetch(`/api/doses/${doseId}`, { method: 'DELETE' });
+    document.getElementById(`med-history-${schedId}`).style.display = 'none';
+    await loadMedicines();
+  } catch { alert('Network error'); }
+}
+
+async function archiveMed(id) {
+  if (!confirm('Archive this schedule? It will no longer appear in the active list.')) return;
+  try {
+    await fetch(`/api/medicines/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: 0 }),
+    });
+    await loadMedicines();
+  } catch { alert('Network error'); }
+}
+
+async function restoreMed(id) {
+  try {
+    await fetch(`/api/medicines/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: 1 }),
+    });
+    await loadMedicines();
+  } catch { alert('Network error'); }
+}
+
+async function deleteMedSchedule(id) {
+  if (!confirm('Permanently delete this schedule and all its dose history?')) return;
+  try {
+    // first remove all doses, then delete schedule
+    const doses = await fetch(`/api/doses?schedule_id=${id}`).then(r => r.json());
+    await Promise.all(doses.map(d => fetch(`/api/doses/${d.id}`, { method: 'DELETE' })));
+    await fetch(`/api/medicines/${id}`, { method: 'DELETE' });
+    await loadMedicines();
+  } catch { alert('Network error'); }
+}
+
+async function toggleArchivedMeds() {
+  archivedMedsVisible = !archivedMedsVisible;
+  const listEl    = document.getElementById('med-archived-list');
+  const btnEl     = document.getElementById('med-archived-btn');
+  const chevronEl = document.getElementById('med-archived-chevron');
+  if (!archivedMedsVisible) {
+    listEl.style.display = 'none';
+    btnEl.innerHTML = `${icon('chevron-right')} Show archived`;
+    lucide.createIcons(); return;
+  }
+  btnEl.innerHTML = `${icon('chevron-down')} Hide archived`;
+  lucide.createIcons();
+  loadArchivedMeds();
+}
+
+async function loadArchivedMeds() {
+  const listEl = document.getElementById('med-archived-list');
+  listEl.style.display = 'block';
+  listEl.innerHTML = '<p class="med-empty">Loading…</p>';
+  try {
+    const all      = await fetch('/api/medicines/all').then(r => r.json());
+    const archived = all.filter(s => !s.active);
+    if (!archived.length) { listEl.innerHTML = '<p class="med-empty">No archived schedules.</p>'; return; }
+    listEl.innerHTML = '';
+    const title = document.createElement('p');
+    title.className = 'med-archived-title';
+    title.textContent = `Archived (${archived.length})`;
+    listEl.appendChild(title);
+    for (const s of archived) listEl.appendChild(makeMedCardEl(s, true));
+    lucide.createIcons();
+  } catch { listEl.innerHTML = '<p class="med-empty" style="color:#ef4444">Failed to load.</p>'; }
+}
+
+// ── Add / Edit medicine schedule ──────────────────────────────────────────
+
+function showAddMedForm() {
+  const formEl = document.getElementById('add-med-form');
+  if (formEl.style.display !== 'none') return;
+  formEl.style.display = 'block';
+  formEl.innerHTML = `
+    <div class="med-form">
+      <p class="section-title" style="margin-bottom:0.75rem">New schedule</p>
+      <div class="med-form-grid">
+        <div class="edit-row"><label>Name</label><input type="text" id="med-f-name" placeholder="e.g. Paracetamol" /></div>
+        <div class="edit-row"><label>Dose</label><input type="text" id="med-f-dose" placeholder="e.g. 200mg" /></div>
+        <div class="edit-row"><label>Every (hours)</label><input type="number" id="med-f-interval" min="0.5" step="0.5" value="6" style="width:6rem" /></div>
+        <div class="edit-row"><label>First dose at</label><div class="fp-dt-wrap"><input type="text" id="med-f-dt" placeholder="Select…" /></div></div>
+      </div>
+      <div class="edit-actions">
+        <button class="btn-secondary btn-sm" onclick="hideAddMedForm()">Cancel</button>
+        <button class="btn-primary btn-sm" onclick="saveNewMed()">Add schedule</button>
+      </div>
+    </div>`;
+  fpMedDt = flatpickr('#med-f-dt', {
+    enableTime: true, time_24hr: appSettings.time_format !== '12h',
+    dateFormat: fpDateFormat(), defaultDate: new Date(),
+  });
+}
+
+function hideAddMedForm() {
+  const formEl = document.getElementById('add-med-form');
+  formEl.style.display = 'none';
+  formEl.innerHTML = '';
+  fpMedDt = null;
+}
+
+async function saveNewMed() {
+  const name     = document.getElementById('med-f-name').value.trim();
+  const dose     = document.getElementById('med-f-dose').value.trim();
+  const interval = parseFloat(document.getElementById('med-f-interval').value);
+  const firstDt  = fpMedDt?.selectedDates[0];
+  if (!name)    { alert('Name is required'); return; }
+  if (!dose)    { alert('Dose is required'); return; }
+  if (!interval || interval <= 0) { alert('Interval must be > 0'); return; }
+  if (!firstDt) { alert('First dose time is required'); return; }
+  try {
+    const resp = await fetch('/api/medicines', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, dose, interval_hours: interval, first_dose_at: fpDateToISO(firstDt) }),
+    });
+    if (!resp.ok) { const e = await resp.json(); alert(e.detail || 'Failed'); return; }
+    hideAddMedForm();
+    await loadMedicines();
+  } catch { alert('Network error'); }
+}
+
+let fpMedEdit = null;
+function editMed(id) {
+  const sched = medicineSchedules.find(s => s.id === id) || { id, name: '', dose: '', interval_hours: 6, first_dose_at: new Date().toISOString() };
+  const card = document.getElementById(`med-${id}`);
+  card.innerHTML = `
+    <div class="med-form-grid">
+      <div class="edit-row"><label>Name</label><input type="text" id="med-e-name-${id}" value="${sched.name}" /></div>
+      <div class="edit-row"><label>Dose</label><input type="text" id="med-e-dose-${id}" value="${sched.dose}" /></div>
+      <div class="edit-row"><label>Every (h)</label><input type="number" id="med-e-int-${id}" value="${sched.interval_hours}" min="0.5" step="0.5" style="width:6rem" /></div>
+      <div class="edit-row"><label>First dose</label><div class="fp-dt-wrap"><input type="text" id="med-e-dt-${id}" placeholder="Select…"></div></div>
+    </div>
+    <div class="edit-actions">
+      <button class="btn-secondary btn-sm" onclick="renderMedicineList()">Cancel</button>
+      <button class="btn-primary btn-sm" onclick="saveMedEdit(${id})">Save</button>
+    </div>`;
+  if (fpMedEdit) { fpMedEdit.destroy(); fpMedEdit = null; }
+  fpMedEdit = flatpickr(`#med-e-dt-${id}`, {
+    enableTime: true, time_24hr: appSettings.time_format !== '12h',
+    dateFormat: fpDateFormat(), defaultDate: new Date(sched.first_dose_at),
+  });
+}
+
+async function saveMedEdit(id) {
+  const name      = document.getElementById(`med-e-name-${id}`).value.trim();
+  const dose      = document.getElementById(`med-e-dose-${id}`).value.trim();
+  const interval  = parseFloat(document.getElementById(`med-e-int-${id}`).value);
+  const firstDt   = fpMedEdit?.selectedDates[0];
+  if (!name || !dose || !interval) { alert('All fields required'); return; }
+  const body = { name, dose, interval_hours: interval };
+  if (firstDt) body.first_dose_at = fpDateToISO(firstDt);
+  try {
+    const resp = await fetch(`/api/medicines/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) { const e = await resp.json(); alert(e.detail || 'Failed'); return; }
+    fpMedEdit?.destroy(); fpMedEdit = null;
+    await loadMedicines();
+  } catch { alert('Network error'); }
+}
+
+// ── Health tracker ────────────────────────────────────────────────────────
+
+const HEALTH_TYPES = [
+  { key: 'temperature', label: 'Temperature', icon: 'thermometer', resolution: 'immediate',
+    metricUnit: '°C', imperialUnit: '°F',
+    toImperial: v => v * 9/5 + 32, toMetric: v => (v - 32) * 5/9,
+    decimals: 1, color: '#f87171' },
+  { key: 'heart_rate', label: 'Heart Rate', icon: 'heart-pulse', resolution: 'immediate',
+    metricUnit: 'bpm', imperialUnit: 'bpm',
+    toImperial: v => v, toMetric: v => v,
+    decimals: 0, color: '#f472b6' },
+  { key: 'spo2', label: 'SpO₂', icon: 'activity', resolution: 'immediate',
+    metricUnit: '%', imperialUnit: '%',
+    toImperial: v => v, toMetric: v => v,
+    decimals: 0, color: '#a78bfa' },
+  { key: 'weight', label: 'Weight', icon: 'scale', resolution: 'longterm',
+    metricUnit: 'kg', imperialUnit: 'lbs',
+    toImperial: v => v * 2.20462, toMetric: v => v / 2.20462,
+    decimals: 3, color: '#60a5fa' },
+  { key: 'height', label: 'Height', icon: 'ruler', resolution: 'longterm',
+    metricUnit: 'cm', imperialUnit: 'in',
+    toImperial: v => v / 2.54, toMetric: v => v * 2.54,
+    decimals: 1, color: '#34d399' },
+];
+
+const HEALTH_PRESETS = {
+  immediate: [{ days: 1, label: '1d' }, { days: 3, label: '3d' }, { days: 7, label: '7d' }, { days: 30, label: '30d' }],
+  longterm:  [{ days: 30, label: '1m' }, { days: 90, label: '3m' }, { days: 180, label: '6m' }, { days: 365, label: '1y' }, { days: 0, label: 'All' }],
+};
+
+let healthReadings  = {};   // { type_key: [{ id, value, timestamp, notes }, …] }
+let healthChart     = null;
+let healthDetailKey  = null;
+let healthPreset     = '1';   // days; '0' = All
+let fpHealthDt       = null;
+let fpHealthFrom     = null;
+let fpHealthTo       = null;
+
+function healthType(key) { return HEALTH_TYPES.find(t => t.key === key); }
+
+function healthUnit(t) {
+  return appSettings.units === 'imperial' ? t.imperialUnit : t.metricUnit;
+}
+
+function healthDisplay(t, storedVal) {
+  // Values stored in metric; convert for display
+  const v = appSettings.units === 'imperial' ? t.toImperial(storedVal) : storedVal;
+  return v.toFixed(t.decimals);
+}
+
+function healthStoreValue(t, displayVal) {
+  // Convert display value back to metric for storage
+  const v = parseFloat(displayVal);
+  return appSettings.units === 'imperial' ? t.toMetric(v) : v;
+}
+
+function healthAgo(isoStr) {
+  const diffMins = Math.round((Date.now() - new Date(isoStr).getTime()) / 60000);
+  if (diffMins < 2)   return 'just now';
+  if (diffMins < 60)  return `${diffMins}m ago`;
+  const h = Math.floor(diffMins / 60);
+  if (h < 24)         return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
+}
+
+function healthRefRange(key) {
+  switch (key) {
+    case 'temperature': return { refLow: +appSettings.temp_low,  refHigh: +appSettings.temp_high };
+    case 'heart_rate':  return { refLow: +appSettings.hr_low,    refHigh: +appSettings.hr_high   };
+    case 'spo2':        return { refLow: +appSettings.spo2_low,  refHigh: 100 };
+    default:            return { refLow: null, refHigh: null };
+  }
+}
+
+function healthAlert(t, storedVal) {
+  const { refLow, refHigh } = healthRefRange(t.key);
+  if (refLow === null && refHigh === null) return null;
+  if (refHigh !== null && storedVal > refHigh) return 'alert';
+  if (refLow  !== null && storedVal < refLow)  return 'alert';
+  const margin = (refHigh - refLow) * 0.1;
+  if (refHigh !== null && storedVal > refHigh - margin) return 'warn';
+  if (refLow  !== null && storedVal < refLow  + margin) return 'warn';
+  return null;
+}
+
+async function loadHealth() {
+  const results = await Promise.all(
+    HEALTH_TYPES.map(t =>
+      fetch(`/api/health-events?event_type=${t.key}`).then(r => r.json()).catch(() => [])
+    )
+  );
+  HEALTH_TYPES.forEach((t, i) => { healthReadings[t.key] = results[i]; });
+  renderHealthDashboard();
+  renderHomeHealthWidget();
+}
+
+function renderHealthDashboard() {
+  document.getElementById('health-dashboard-view').style.display = '';
+  document.getElementById('health-detail-view').classList.remove('active');
+  document.getElementById('health-add-btn').style.display = 'none';
+  hideHealthAddForm();
+  const dash = document.getElementById('health-dashboard');
+  dash.innerHTML = '';
+  for (const t of HEALTH_TYPES) {
+    const readings = healthReadings[t.key] || [];
+    const latest   = readings[0];
+    const card = document.createElement('div');
+    card.className = 'health-card' + (latest ? ` ${healthAlert(t, latest.value) || ''}` : '');
+    card.onclick = () => openHealthDetail(t.key);
+    if (latest) {
+      const spark = renderSparkline(readings.slice(0,20).reverse(), t);
+      card.innerHTML = `
+        <div class="health-card-icon"><i data-lucide="${t.icon}"></i></div>
+        <div class="health-card-name">${t.label}</div>
+        <div class="health-card-value">${healthDisplay(t, latest.value)}<span class="health-card-unit"> ${healthUnit(t)}</span></div>
+        <div class="health-card-sparkline">${spark}</div>
+        <div class="health-card-ago">${healthAgo(latest.timestamp)}</div>`;
+    } else {
+      card.innerHTML = `
+        <div class="health-card-icon"><i data-lucide="${t.icon}"></i></div>
+        <div class="health-card-name">${t.label}</div>
+        <div class="health-card-value" style="color:#475569">—</div>
+        <div class="health-card-ago" style="color:#334155">No readings</div>`;
+    }
+    dash.appendChild(card);
+  }
+  lucide.createIcons();
+}
+
+function renderSparkline(readings, t) {
+  if (readings.length < 2) return '';
+  const W = 120, H = 32, pad = 2;
+  const vals = readings.map(r => appSettings.units === 'imperial' ? t.toImperial(r.value) : r.value);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = max - min || 1;
+  const pts = vals.map((v, i) => {
+    const x = pad + (i / (vals.length - 1)) * (W - pad * 2);
+    const y = H - pad - ((v - min) / range) * (H - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <polyline points="${pts}" fill="none" stroke="${t.color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>
+  </svg>`;
+}
+
+function renderHealthPresets(t) {
+  const presets = HEALTH_PRESETS[t.resolution];
+  const wrap = document.getElementById('health-presets');
+  wrap.innerHTML = presets.map(p =>
+    `<button class="health-preset-btn preset-btn${String(p.days) === healthPreset ? ' active' : ''}" data-hp="${p.days}">${p.label}</button>`
+  ).join('');
+  wrap.querySelectorAll('.health-preset-btn').forEach(btn =>
+    btn.addEventListener('click', () => setHealthPreset(btn.dataset.hp))
+  );
+}
+
+function healthPresetDates(days) {
+  const to   = new Date();
+  const from = days ? new Date(Date.now() - days * 86400000) : null;
+  return { from, to };
+}
+
+function initHealthDatePickers() {
+  if (fpHealthFrom) { fpHealthFrom.destroy(); fpHealthFrom = null; }
+  if (fpHealthTo)   { fpHealthTo.destroy();   fpHealthTo   = null; }
+  const dateFmt = fpDateFormat().replace(' H:i', '');
+  const onChange = () => {
+    document.querySelectorAll('.health-preset-btn').forEach(b => b.classList.remove('active'));
+    healthPreset = '';
+    if (healthDetailKey) { renderHealthChart(healthDetailKey); renderHealthHistory(healthDetailKey); }
+  };
+  fpHealthFrom = flatpickr('#health-from-date', { dateFormat: dateFmt, allowInput: true, onChange });
+  fpHealthTo   = flatpickr('#health-to-date',   { dateFormat: dateFmt, allowInput: true, onChange });
+  // Pre-fill with current preset range
+  const { from, to } = healthPresetDates(parseInt(healthPreset) || 0);
+  if (from) fpHealthFrom.setDate(from, false);
+  fpHealthTo.setDate(to, false);
+}
+
+function clearHealthDateRange() {
+  fpHealthFrom?.clear(false);
+  fpHealthTo?.clear(false);
+  const t = healthType(healthDetailKey);
+  if (t) setHealthPreset(String(t.resolution === 'longterm' ? 180 : 1));
+}
+
+function setHealthPreset(days) {
+  healthPreset = String(days);
+  document.querySelectorAll('.health-preset-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.hp === healthPreset)
+  );
+  // Update date pickers to reflect the preset range
+  const { from, to } = healthPresetDates(parseInt(days));
+  if (fpHealthFrom && fpHealthTo) {
+    if (from) fpHealthFrom.setDate(from, false); else fpHealthFrom.clear(false);
+    fpHealthTo.setDate(to, false);
+  }
+  if (healthDetailKey) { renderHealthChart(healthDetailKey); renderHealthHistory(healthDetailKey); }
+}
+
+function filteredHealthReadings(key) {
+  const readings = healthReadings[key] || [];
+  const from = fpHealthFrom?.selectedDates[0];
+  const to   = fpHealthTo?.selectedDates[0];
+  return readings.filter(r => {
+    const ts = new Date(r.timestamp);
+    if (from && ts < from) return false;
+    if (to) {
+      const toEnd = new Date(to); toEnd.setHours(23, 59, 59, 999);
+      if (ts > toEnd) return false;
+    }
+    return true;
+  });
+}
+
+function openHealthDetail(key) {
+  healthDetailKey = key;
+  const t = healthType(key);
+  const defaultPreset = HEALTH_PRESETS[t.resolution].find(p => p.days === (t.resolution === 'longterm' ? 180 : 1));
+  healthPreset = String(defaultPreset.days);
+  document.getElementById('health-dashboard-view').style.display = 'none';
+  const detail = document.getElementById('health-detail-view');
+  detail.classList.add('active');
+  document.getElementById('health-detail-title').textContent = `${t.label} (${healthUnit(t)})`;
+  renderHealthPresets(t);
+  initHealthDatePickers();
+  renderHealthChart(key);
+  renderHealthHistory(key);
+}
+
+function closeHealthDetail() {
+  healthDetailKey = null;
+  if (healthChart) { healthChart.destroy(); healthChart = null; }
+  if (fpHealthFrom) { fpHealthFrom.destroy(); fpHealthFrom = null; }
+  if (fpHealthTo)   { fpHealthTo.destroy();   fpHealthTo   = null; }
+  document.getElementById('health-detail-view').classList.remove('active');
+  document.getElementById('health-dashboard-view').style.display = '';
+  document.getElementById('health-add-form-detail').style.display = 'none';
+  document.getElementById('health-add-form-detail').innerHTML = '';
+}
+
+function renderHealthChart(key) {
+  if (healthChart) { healthChart.destroy(); healthChart = null; }
+  const t        = healthType(key);
+  const readings = [...filteredHealthReadings(key)].reverse();
+  if (!readings.length) return;
+  const labels = readings.map(r => {
+    const d = new Date(r.timestamp);
+    const locale = appSettings.date_format === 'mdy' ? 'en-US' : 'en-GB';
+    return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  });
+  const data = readings.map(r => parseFloat(
+    appSettings.units === 'imperial' ? t.toImperial(r.value).toFixed(t.decimals) : r.value.toFixed(t.decimals)
+  ));
+  const datasets = [{
+    label: `${t.label} (${healthUnit(t)})`,
+    data, borderColor: t.color, backgroundColor: t.color + '22',
+    borderWidth: 2, pointRadius: 4, pointHoverRadius: 6,
+    tension: 0.3, fill: false,
+  }];
+  // Reference band
+  const { refLow, refHigh } = healthRefRange(key);
+  if (refLow !== null && refHigh !== null) {
+    const lo = appSettings.units === 'imperial' ? t.toImperial(refLow)  : refLow;
+    const hi = appSettings.units === 'imperial' ? t.toImperial(refHigh) : refHigh;
+    datasets.push({
+      label: 'Normal range',
+      data: labels.map(() => hi),
+      borderColor: 'transparent', backgroundColor: '#22c55e18',
+      pointRadius: 0, fill: '+1', tension: 0,
+    });
+    datasets.push({
+      label: '_ref_lo',
+      data: labels.map(() => lo),
+      borderColor: 'transparent', backgroundColor: 'transparent',
+      pointRadius: 0, fill: false, tension: 0,
+    });
+  }
+  const ctx = document.getElementById('healthChart').getContext('2d');
+  healthChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { labels: { color: tc().legend, font: { size: 12 }, filter: item => !item.text.startsWith('_') } },
+        tooltip: { backgroundColor: tc().tooltipBg, borderColor: tc().tooltipBorder, borderWidth: 1,
+          titleColor: tc().tooltipTitle, bodyColor: tc().tooltipBody },
+      },
+      scales: {
+        x: { ticks: { color: tc().tick, font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 20 },
+             grid: { color: tc().gridMinor } },
+        y: { ticks: { color: tc().tick, font: { size: 10 }, callback: v => `${parseFloat(v.toFixed(1))}${healthUnit(t)}` },
+             grid: { color: tc().gridMajor } },
+      },
+    },
+  });
+}
+
+function renderHealthHistory(key) {
+  const t        = healthType(key);
+  const readings = filteredHealthReadings(key);
+  const el = document.getElementById('health-history-list');
+  if (!readings.length) { el.innerHTML = '<p class="med-empty">No readings yet.</p>'; return; }
+  const locale = appSettings.date_format === 'mdy' ? 'en-US' : 'en-GB';
+  el.innerHTML = readings.map(r => `
+    <div class="health-entry" id="health-entry-${r.id}">
+      <span class="health-entry-val">${healthDisplay(t, r.value)} ${healthUnit(t)}</span>
+      <span class="health-entry-ts">${new Date(r.timestamp).toLocaleDateString(locale,{day:'numeric',month:'short',year:'numeric'})} ${fmtLocalTime(r.timestamp)}</span>
+      ${r.notes ? `<span class="health-entry-note">${r.notes}</span>` : ''}
+      <div class="health-entry-actions">
+        <button class="btn-icon" onclick="editHealthReading(${r.id},'${key}',${r.value},'${r.timestamp}','${r.notes||''}')" title="Edit">${icon('pencil')}</button>
+        <button class="btn-icon" onclick="deleteHealthReading(${r.id},'${key}')" title="Delete">${icon('trash-2')}</button>
+      </div>
+    </div>`).join('');
+  lucide.createIcons();
+}
+
+function showHealthAddForm() {
+  const inDetail = healthDetailKey !== null;
+  const wrapId   = inDetail ? 'health-add-form-detail' : 'health-add-form-wrap';
+  const wrap     = document.getElementById(wrapId);
+  if (wrap.style.display !== 'none' && wrap.innerHTML) return;
+
+  const typeOptions = inDetail
+    ? `<input type="hidden" id="hf-type" value="${healthDetailKey}">`
+    : `<select id="hf-type" class="settings-input" style="flex:1;padding:0.4rem 0.6rem;font-size:0.9rem">
+        ${HEALTH_TYPES.map(t => `<option value="${t.key}">${t.label}</option>`).join('')}
+       </select>`;
+
+  wrap.innerHTML = `
+    <div class="health-add-form">
+      <div class="health-add-row">
+        <label>Type</label>${typeOptions}
+      </div>
+      <div class="health-add-row">
+        <label>Value</label>
+        <input type="number" id="hf-value" step="0.01" placeholder="0.0" style="width:7rem">
+        <span id="hf-unit" style="font-size:0.8rem;color:#64748b">${inDetail ? healthUnit(healthType(healthDetailKey)) : '—'}</span>
+      </div>
+      <div class="health-add-row">
+        <label>When</label>
+        <div class="fp-dt-wrap"><input type="text" id="hf-dt" placeholder="Select…"></div>
+      </div>
+      <div class="health-add-row">
+        <label>Notes</label>
+        <input type="text" id="hf-notes" placeholder="Optional" style="width:100%;flex:1">
+      </div>
+      <div class="edit-actions">
+        <button class="btn-secondary btn-sm" onclick="hideHealthAddForm()">Cancel</button>
+        <button class="btn-primary btn-sm" onclick="saveHealthReading()">Save</button>
+      </div>
+    </div>`;
+  wrap.style.display = 'block';
+
+  if (!inDetail) {
+    document.getElementById('hf-type').addEventListener('change', e => {
+      const t = healthType(e.target.value);
+      document.getElementById('hf-unit').textContent = t ? healthUnit(t) : '—';
+    });
+  }
+
+  fpHealthDt = flatpickr('#hf-dt', {
+    enableTime: true, time_24hr: appSettings.time_format !== '12h',
+    dateFormat: fpDateFormat(), defaultDate: new Date(),
+  });
+}
+
+function hideHealthAddForm() {
+  ['health-add-form-wrap','health-add-form-detail'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+  });
+  fpHealthDt = null;
+}
+
+async function saveHealthReading() {
+  const key   = document.getElementById('hf-type')?.value;
+  const raw   = document.getElementById('hf-value')?.value;
+  const dt    = fpHealthDt?.selectedDates[0];
+  const notes = document.getElementById('hf-notes')?.value.trim() || null;
+  if (!key || !raw || !dt) { alert('Type, value and time are required'); return; }
+  const t           = healthType(key);
+  const storedValue = healthStoreValue(t, raw);
+  try {
+    const resp = await fetch('/api/health-events', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_type: key, value: storedValue, timestamp: fpDateToISO(dt), notes }),
+    });
+    if (!resp.ok) { const e = await resp.json(); alert(e.detail || 'Failed'); return; }
+    hideHealthAddForm();
+    await loadHealth();
+    if (healthDetailKey) { renderHealthChart(healthDetailKey); renderHealthHistory(healthDetailKey); }
+  } catch { alert('Network error'); }
+}
+
+async function deleteHealthReading(id, key) {
+  if (!confirm('Delete this reading?')) return;
+  try {
+    await fetch(`/api/health-events/${id}`, { method: 'DELETE' });
+    await loadHealth();
+    if (healthDetailKey === key) { renderHealthChart(key); renderHealthHistory(key); }
+  } catch { alert('Network error'); }
+}
+
+let fpHealthEdit = null;
+function editHealthReading(id, key, storedVal, timestamp, notes) {
+  const t       = healthType(key);
+  const dispVal = healthDisplay(t, storedVal);
+  const entryEl = document.getElementById(`health-entry-${id}`);
+  entryEl.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:0.5rem;width:100%">
+      <div class="health-add-row">
+        <label>Value</label>
+        <input type="number" id="he-val-${id}" value="${dispVal}" step="0.01" style="width:7rem">
+        <span style="font-size:0.8rem;color:#64748b">${healthUnit(t)}</span>
+      </div>
+      <div class="health-add-row">
+        <label>When</label>
+        <div class="fp-dt-wrap"><input type="text" id="he-dt-${id}"></div>
+      </div>
+      <div class="health-add-row">
+        <label>Notes</label>
+        <input type="text" id="he-notes-${id}" value="${notes}" style="flex:1">
+      </div>
+      <div class="edit-actions">
+        <button class="btn-secondary btn-sm" onclick="renderHealthHistory('${key}')">Cancel</button>
+        <button class="btn-primary btn-sm" onclick="saveHealthEdit(${id},'${key}')">Save</button>
+      </div>
+    </div>`;
+  if (fpHealthEdit) { fpHealthEdit.destroy(); fpHealthEdit = null; }
+  fpHealthEdit = flatpickr(`#he-dt-${id}`, {
+    enableTime: true, time_24hr: appSettings.time_format !== '12h',
+    dateFormat: fpDateFormat(), defaultDate: new Date(timestamp),
+  });
+}
+
+async function saveHealthEdit(id, key) {
+  const t        = healthType(key);
+  const rawVal   = parseFloat(document.getElementById(`he-val-${id}`).value);
+  const dt       = fpHealthEdit?.selectedDates[0];
+  const notes    = document.getElementById(`he-notes-${id}`).value.trim() || null;
+  if (isNaN(rawVal) || !dt) { alert('Value and time are required'); return; }
+  const stored = healthStoreValue(t, rawVal);
+  try {
+    const resp = await fetch(`/api/health-events/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: stored, timestamp: fpDateToISO(dt), notes }),
+    });
+    if (!resp.ok) { const e = await resp.json(); alert(e.detail || 'Failed'); return; }
+    fpHealthEdit?.destroy(); fpHealthEdit = null;
+    await loadHealth();
+    renderHealthChart(key); renderHealthHistory(key);
+  } catch { alert('Network error'); }
+}
+
+function renderHomeHealthWidget() {
+  const subEl  = document.getElementById('home-health-sub');
+  const widget = document.getElementById('home-health-widget');
+  if (!subEl) return;
+
+  const alerts = [], warns = [];
+  const lines = [];
+  const locale = appSettings.date_format === 'mdy' ? 'en-US' : 'en-GB';
+
+  for (const t of HEALTH_TYPES) {
+    const r = (healthReadings[t.key] || [])[0];
+    if (!r) continue;
+    const level = healthAlert(t, r.value);
+    if (level === 'alert') alerts.push(t);
+    else if (level === 'warn') warns.push(t);
+    lines.push({ t, r, level });
+  }
+
+  widget.style.borderColor = alerts.length ? '#ef4444' : warns.length ? '#f59e0b' : '';
+
+  if (!lines.length) {
+    subEl.textContent = 'No readings yet';
+    return;
+  }
+
+  // Show alert/warn summary at top, then the most recent reading
+  const parts = [];
+  if (alerts.length) {
+    parts.push(`<span style="color:#ef4444;font-weight:600">${alerts.map(t=>t.label).join(', ')} ⚠</span>`);
+  } else if (warns.length) {
+    parts.push(`<span style="color:#f59e0b;font-weight:600">${warns.map(t=>t.label).join(', ')} ↑</span>`);
+  }
+  // Most recent reading overall
+  const latest = lines.reduce((a, b) => new Date(a.r.timestamp) > new Date(b.r.timestamp) ? a : b);
+  parts.push(`<span style="color:var(--text-2);font-size:0.75rem">${latest.t.label} <strong style="color:var(--text)">${healthDisplay(latest.t, latest.r.value)}${healthUnit(latest.t)}</strong> · ${healthAgo(latest.r.timestamp)}</span>`);
+
+  subEl.innerHTML = parts.join('<br>');
+}
+
+// ── Tab navigation ────────────────────────────────────────────────────────
+
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.getElementById(`tab-${name}`).classList.add('active');
+
+  if (name === 'home')      loadHome();
+  if (name === 'sleep')     loadTracker();
+  if (name === 'medicines') loadMedicines();
+  if (name === 'health')    loadHealth();
+  if (name === 'analysis') {
+    initAnalysisDatePickers();
+    if (!analysisReady) { analysisReady = true; setAnalysisPreset(analysisPreset); }
+    else loadAnalysis();
+  }
+  if (name === 'settings') renderSettingsForm();
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => showTab(btn.dataset.tab));
+});
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => setAnalysisPreset(btn.dataset.preset));
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+(async () => {
+  await loadSettings();
+  lucide.createIcons();
+  loadHome();
+})();
+</script>
+</body>
+</html>
