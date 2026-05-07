@@ -1,0 +1,20 @@
+services:
+  baby-tracker:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - baby-tracker-data:/app/data
+    environment:
+      - DATABASE_PATH=/app/data/sleep.db
+      - NTFY_URL=https://ntfy.polaris.rdhome.org
+      - NTFY_TOPIC=health-alerts
+      - NTFY_TOKEN=${NTFY_TOKEN:-}
+      # Feature flags — set to "false" to disable a feature (default: true)
+      - FEATURE_SLEEP=${FEATURE_SLEEP:-true}
+      - FEATURE_HEALTH=${FEATURE_HEALTH:-true}
+      - FEATURE_MEDICINES=${FEATURE_MEDICINES:-true}
+    restart: unless-stopped
+
+volumes:
+  baby-tracker-data:
