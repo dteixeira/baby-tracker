@@ -1,0 +1,13 @@
+services:
+  baby-tracker:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_PATH=/app/data/sleep.db
+      - NTFY_URL=https://ntfy.polaris.rdhome.org
+      - NTFY_TOPIC=health-alerts
+      - NTFY_TOKEN=${NTFY_TOKEN:-}
+    restart: unless-stopped
