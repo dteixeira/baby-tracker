@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,18 +15,33 @@ from .scheduler import medicine_reminder_loop
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
 
+# ── Feature flags ─────────────────────────────────────────────────────────────
+# Each feature can be disabled by setting the corresponding env var to "0",
+# "false", or "no" (case-insensitive). All features are enabled by default.
+
+def _flag(name: str) -> bool:
+    return os.environ.get(name, "true").strip().lower() not in {"0", "false", "no"}
+
+FEATURES = {
+    "sleep":      _flag("FEATURE_SLEEP"),
+    "health":     _flag("FEATURE_HEALTH"),
+    "medicines":  _flag("FEATURE_MEDICINES"),
+}
+
+
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    task = asyncio.create_task(medicine_reminder_loop())
+    task = asyncio.create_task(medicine_reminder_loop()) if FEATURES["medicines"] else None
     yield
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="Baby Tracker", lifespan=lifespan)
@@ -73,8 +89,13 @@ class SleepUpdate(BaseModel):
 
 # ── Sleep routes ──────────────────────────────────────────────────────────────
 
+def _require(feature: str):
+    if not FEATURES[feature]:
+        raise HTTPException(404, f"Feature '{feature}' is disabled on this instance")
+
 @app.get("/api/sleep/active")
 def get_active_sleep():
+    _require("sleep")
     with get_db() as conn:
         row = conn.execute(
             "SELECT * FROM sleep_entries WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1"
@@ -84,6 +105,7 @@ def get_active_sleep():
 
 @app.post("/api/sleep/start", status_code=201)
 def start_sleep(body: Optional[SleepStartBody] = None):
+    _require("sleep")
     with get_db() as conn:
         active = conn.execute(
             "SELECT id FROM sleep_entries WHERE end_time IS NULL LIMIT 1"
@@ -101,6 +123,7 @@ def start_sleep(body: Optional[SleepStartBody] = None):
 
 @app.post("/api/sleep/{sleep_id}/stop")
 def stop_sleep(sleep_id: int):
+    _require("sleep")
     with get_db() as conn:
         row = conn.execute("SELECT * FROM sleep_entries WHERE id = ?", (sleep_id,)).fetchone()
         if not row:
@@ -124,6 +147,7 @@ def list_sleep(
     limit: int           = Query(100, ge=1, le=10000),
     offset: int          = Query(0, ge=0),
 ):
+    _require("sleep")
     conditions, params = [], []
     if from_:
         conditions.append("start_time >= ?")
@@ -142,6 +166,7 @@ def list_sleep(
 
 @app.post("/api/sleep", status_code=201)
 def create_sleep(body: SleepCreate):
+    _require("sleep")
     with get_db() as conn:
         cur = conn.execute(
             "INSERT INTO sleep_entries (start_time, end_time, type, notes) VALUES (?, ?, ?, ?)",
@@ -153,6 +178,7 @@ def create_sleep(body: SleepCreate):
 
 @app.patch("/api/sleep/{sleep_id}")
 def update_sleep(sleep_id: int, body: SleepUpdate):
+    _require("sleep")
     with get_db() as conn:
         row = conn.execute("SELECT * FROM sleep_entries WHERE id = ?", (sleep_id,)).fetchone()
         if not row:
@@ -175,6 +201,7 @@ def update_sleep(sleep_id: int, body: SleepUpdate):
 
 @app.delete("/api/sleep/{sleep_id}", status_code=204)
 def delete_sleep(sleep_id: int):
+    _require("sleep")
     with get_db() as conn:
         row = conn.execute("SELECT id FROM sleep_entries WHERE id = ?", (sleep_id,)).fetchone()
         if not row:
@@ -222,6 +249,7 @@ def _next_due(sched: dict, conn) -> Optional[str]:
 
 @app.get("/api/medicines")
 def list_medicines():
+    _require("medicines")
     with get_db() as conn:
         rows = conn.execute(
             "SELECT * FROM medicine_schedules WHERE active = 1 ORDER BY name"
@@ -236,6 +264,7 @@ def list_medicines():
 
 @app.get("/api/medicines/all")
 def list_medicines_all():
+    _require("medicines")
     with get_db() as conn:
         rows = conn.execute(
             "SELECT * FROM medicine_schedules ORDER BY active DESC, name"
@@ -250,6 +279,7 @@ def list_medicines_all():
 
 @app.post("/api/medicines", status_code=201)
 def create_medicine(body: MedicineCreate):
+    _require("medicines")
     with get_db() as conn:
         cur = conn.execute(
             "INSERT INTO medicine_schedules (name, dose, interval_hours, first_dose_at) VALUES (?, ?, ?, ?)",
@@ -263,6 +293,7 @@ def create_medicine(body: MedicineCreate):
 
 @app.patch("/api/medicines/{medicine_id}")
 def update_medicine(medicine_id: int, body: MedicineUpdate):
+    _require("medicines")
     with get_db() as conn:
         row = conn.execute("SELECT * FROM medicine_schedules WHERE id = ?", (medicine_id,)).fetchone()
         if not row:
@@ -283,6 +314,7 @@ def update_medicine(medicine_id: int, body: MedicineUpdate):
 
 @app.delete("/api/medicines/{medicine_id}", status_code=204)
 def delete_medicine(medicine_id: int):
+    _require("medicines")
     with get_db() as conn:
         row = conn.execute("SELECT id FROM medicine_schedules WHERE id = ?", (medicine_id,)).fetchone()
         if not row:
@@ -297,6 +329,7 @@ def delete_medicine(medicine_id: int):
 
 @app.post("/api/medicines/{medicine_id}/taken", status_code=201)
 def record_dose(medicine_id: int, body: Optional[DoseTaken] = None):
+    _require("medicines")
     with get_db() as conn:
         row = conn.execute(
             "SELECT id FROM medicine_schedules WHERE id = ?", (medicine_id,)
@@ -319,6 +352,7 @@ def list_doses(
     from_: Optional[str]       = Query(None, alias="from"),
     to:    Optional[str]       = Query(None),
 ):
+    _require("medicines")
     conditions, params = [], []
     if schedule_id is not None:
         conditions.append("schedule_id = ?")
@@ -340,6 +374,7 @@ def list_doses(
 
 @app.delete("/api/doses/{dose_id}", status_code=204)
 def delete_dose(dose_id: int):
+    _require("medicines")
     with get_db() as conn:
         row = conn.execute("SELECT id FROM medicine_doses WHERE id = ?", (dose_id,)).fetchone()
         if not row:
@@ -371,6 +406,7 @@ def list_health_events(
     from_: Optional[str]      = Query(None, alias="from"),
     to:    Optional[str]      = Query(None),
 ):
+    _require("health")
     conditions, params = [], []
     if event_type:
         conditions.append("event_type = ?")
@@ -392,6 +428,7 @@ def list_health_events(
 
 @app.post("/api/health-events", status_code=201)
 def create_health_event(body: HealthEventCreate):
+    _require("health")
     with get_db() as conn:
         ts = body.timestamp or now_utc()
         cur = conn.execute(
@@ -404,6 +441,7 @@ def create_health_event(body: HealthEventCreate):
 
 @app.patch("/api/health-events/{event_id}")
 def update_health_event(event_id: int, body: HealthEventUpdate):
+    _require("health")
     with get_db() as conn:
         row = conn.execute("SELECT * FROM health_events WHERE id = ?", (event_id,)).fetchone()
         if not row:
@@ -422,11 +460,19 @@ def update_health_event(event_id: int, body: HealthEventUpdate):
 
 @app.delete("/api/health-events/{event_id}", status_code=204)
 def delete_health_event(event_id: int):
+    _require("health")
     with get_db() as conn:
         row = conn.execute("SELECT id FROM health_events WHERE id = ?", (event_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Health event not found")
         conn.execute("DELETE FROM health_events WHERE id = ?", (event_id,))
+
+
+# ── Features route ────────────────────────────────────────────────────────────
+
+@app.get("/api/features")
+def get_features():
+    return FEATURES
 
 
 # ── Settings routes ───────────────────────────────────────────────────────────

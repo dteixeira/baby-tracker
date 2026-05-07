@@ -1084,27 +1084,32 @@ async function stopSleep(id) {
 
 async function loadHome() {
   try {
-    const [sleepResp, medResp, recentResp] = await Promise.all([
-      fetch('/api/sleep/active'),
-      fetch('/api/medicines'),
-      fetch('/api/sleep?limit=30'),
-    ]);
-    activeSession      = await sleepResp.json();
-    medicineSchedules  = await medResp.json();
-    const recentSleep  = await recentResp.json();
+    const fetches = [];
+    if (FEATURES.sleep)     fetches.push(fetch('/api/sleep/active'), fetch('/api/sleep?limit=30'));
+    if (FEATURES.medicines) fetches.push(fetch('/api/medicines'));
+    const results = await Promise.all(fetches);
+    let ri = 0;
+    if (FEATURES.sleep) {
+      activeSession     = await results[ri++].json();
+      const recentSleep = await results[ri++].json();
+      renderHomeSleepWidget(recentSleep);
+    }
+    if (FEATURES.medicines) {
+      medicineSchedules = await results[ri++].json();
+      renderHomeMedWidget();
+    }
     renderHomeActiveSession();
-    renderHomeMedWidget();
-    renderHomeSleepWidget(recentSleep);
     if (activeSession) startTimer(); else stopTimer();
   } catch { /* silent */ }
-  // Health widget loaded separately (5 API calls)
-  try {
-    const results = await Promise.all(
-      HEALTH_TYPES.map(t => fetch(`/api/health-events?event_type=${t.key}`).then(r => r.json()).catch(() => []))
-    );
-    HEALTH_TYPES.forEach((t, i) => { healthReadings[t.key] = results[i]; });
-    renderHomeHealthWidget();
-  } catch { /* silent */ }
+  if (FEATURES.health) {
+    try {
+      const results = await Promise.all(
+        HEALTH_TYPES.map(t => fetch(`/api/health-events?event_type=${t.key}`).then(r => r.json()).catch(() => []))
+      );
+      HEALTH_TYPES.forEach((t, i) => { healthReadings[t.key] = results[i]; });
+      renderHomeHealthWidget();
+    } catch { /* silent */ }
+  }
 }
 
 function renderHomeMedWidget() {
@@ -2882,6 +2887,31 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => setAnalysisPreset(btn.dataset.preset));
 });
 
+// ── Feature flags ─────────────────────────────────────────────────────────
+
+let FEATURES = { sleep: true, health: true, medicines: true };
+
+async function loadFeatures() {
+  try {
+    FEATURES = await fetch('/api/features').then(r => r.json());
+  } catch { /* default to all enabled */ }
+
+  // Hide nav tabs for disabled features
+  if (!FEATURES.sleep) {
+    document.querySelector('[data-tab="sleep"]')?.remove();
+    document.querySelector('[data-tab="analysis"]')?.remove();
+    document.getElementById('home-sleep-widget')?.remove();
+  }
+  if (!FEATURES.medicines) {
+    document.querySelector('[data-tab="medicines"]')?.remove();
+    document.getElementById('home-med-widget')?.remove();
+  }
+  if (!FEATURES.health) {
+    document.querySelector('[data-tab="health"]')?.remove();
+    document.getElementById('home-health-widget')?.remove();
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 
 if ('serviceWorker' in navigator) {
@@ -2889,6 +2919,7 @@ if ('serviceWorker' in navigator) {
 }
 
 (async () => {
+  await loadFeatures();
   await loadSettings();
   lucide.createIcons();
   loadHome();

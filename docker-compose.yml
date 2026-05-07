@@ -10,6 +10,10 @@ services:
       - NTFY_URL=https://ntfy.polaris.rdhome.org
       - NTFY_TOPIC=health-alerts
       - NTFY_TOKEN=${NTFY_TOKEN:-}
+      # Feature flags — set to "false" to disable a feature (default: true)
+      # - FEATURE_SLEEP=true
+      # - FEATURE_HEALTH=true
+      # - FEATURE_MEDICINES=true
     restart: unless-stopped
 
 volumes:
