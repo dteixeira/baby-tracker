@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Baby Sleep Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1 { font-size: 1.5rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.25rem; }
+    .subtitle { font-size: 0.85rem; color: #64748b; margin-bottom: 2rem; }
+
+    /* ── Upload ─────────────────────────────────────────── */
+    .upload-area {
+      border: 2px dashed #334155;
+      border-radius: 12px;
+      padding: 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 2rem;
+    }
+    .upload-area:hover, .upload-area.drag-over { border-color: #6366f1; background: #1e1b4b20; }
+    .upload-area input[type="file"] { display: none; }
+    .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .upload-label { font-size: 0.95rem; color: #94a3b8; }
+    .upload-label strong { color: #818cf8; cursor: pointer; }
+    .upload-hint { font-size: 0.78rem; color: #475569; margin-top: 0.4rem; }
+
+    .file-info {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.82rem;
+      color: #94a3b8;
+      margin-bottom: 1.5rem;
+    }
+    .file-info .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+
+    /* ── Filter bar ─────────────────────────────────────── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .preset-group {
+      display: flex;
+      gap: 0.25rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.25rem;
+    }
+    .preset-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .preset-btn:hover { background: #334155; color: #e2e8f0; }
+    .preset-btn.active { background: #4f46e5; color: #fff; }
+
+    .custom-range {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .custom-range input[type="date"] {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+      outline: none;
+      color-scheme: dark;
+    }
+    .custom-range input[type="date"]:focus { border-color: #4f46e5; }
+
+    /* ── Dashboard ──────────────────────────────────────── */
+    #dashboard { display: none; }
+
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Stats grid ─────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+    .stat-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      margin-bottom: 0.5rem;
+    }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: #f1f5f9; line-height: 1; }
+    .stat-sub { font-size: 0.75rem; color: #475569; margin-top: 0.4rem; }
+    .stat-card.accent { border-color: #4f46e5; }
+    .stat-card.accent .stat-value { color: #818cf8; }
+
+    /* ── Charts ─────────────────────────────────────────── */
+    .chart-wrap {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+    .chart-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 1rem;
+    }
+    .chart-scroll { overflow-x: auto; }
+
+    /* ── Heatmap ────────────────────────────────────────── */
+    .heatmap-wrap {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+    .heatmap-legend {
+      display: flex;
+      gap: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .legend-swatch {
+      width: 14px;
+      height: 10px;
+      border-radius: 2px;
+    }
+    .heatmap-scroll { overflow-y: auto; max-height: 520px; }
+    #heatmapCanvas { display: block; }
+
+    /* ── Table ──────────────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #334155;
+      border-radius: 12px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    thead th {
+      background: #1e293b;
+      color: #64748b;
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.75rem 1rem;
+      text-align: right;
+      border-bottom: 1px solid #334155;
+      white-space: nowrap;
+    }
+    thead th:first-child { text-align: left; }
+    tbody tr { border-bottom: 1px solid #1e293b; transition: background 0.15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #1e293b50; }
+    tbody td { padding: 0.65rem 1rem; color: #cbd5e1; text-align: right; white-space: nowrap; }
+    tbody td:first-child { text-align: left; }
+    .bar-cell { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; }
+    .bar { height: 6px; border-radius: 3px; background: #4f46e5; min-width: 2px; }
+    .split-badge {
+      display: inline-block;
+      background: #7c3aed20;
+      border: 1px solid #7c3aed60;
+      color: #a78bfa;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      padding: 0.1rem 0.4rem;
+    }
+    .muted { color: #334155; }
+
+    .error-msg {
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      color: #fca5a5;
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Baby Sleep Dashboard</h1>
+<p class="subtitle">Load a CSV export from your tracking app to see statistics.</p>
+
+<div class="upload-area" id="uploadArea">
+  <input type="file" id="fileInput" accept=".csv" />
+  <div class="upload-icon">🌙</div>
+  <div class="upload-label">
+    Drop your CSV here or <strong onclick="document.getElementById('fileInput').click()">browse</strong>
+  </div>
+  <div class="upload-hint">Expects columns: Day (MM-DD-YYYY), Time (HH:MM - HH:MM), Category, Detail (duration)</div>
+</div>
+
+<div id="errorMsg" class="error-msg" style="display:none;"></div>
+<div id="fileInfo" class="file-info" style="display:none;">
+  <span class="dot"></span>
+  <span id="fileInfoText"></span>
+</div>
+
+<div id="dashboard">
+  <div class="filter-bar" id="filterBar">
+    <div class="preset-group">
+      <button class="preset-btn" data-preset="7">7d</button>
+      <button class="preset-btn active" data-preset="30">30d</button>
+      <button class="preset-btn" data-preset="90">3m</button>
+      <button class="preset-btn" data-preset="0">All</button>
+    </div>
+    <div class="custom-range">
+      <span>From</span>
+      <input type="date" id="fromDate" />
+      <span>to</span>
+      <input type="date" id="toDate" />
+    </div>
+  </div>
+
+  <p class="section-title">Overview</p>
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">Sleep &amp; Awake Composition — per sleep day, with 7-day rolling average</div>
+    <div class="chart-scroll" id="compositionScroll">
+      <canvas id="compositionChart" height="300"></canvas>
+    </div>
+  </div>
+
+  <div class="heatmap-wrap">
+    <div class="chart-title">Sleep Timeline</div>
+    <div class="heatmap-legend">
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:#4338ca"></div> Night sleep
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:#0d9488"></div> Nap
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:#d97706"></div> Below threshold
+        <span style="color:#475569;font-size:0.7rem">(night &lt; 8h · nap &lt; 30m)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:#ef4444"></div> Above threshold
+        <span style="color:#475569;font-size:0.7rem">(night &gt; 16h · nap &gt; 3h)</span>
+      </div>
+    </div>
+    <div class="heatmap-scroll">
+      <canvas id="heatmapCanvas"></canvas>
+    </div>
+  </div>
+
+  <p class="section-title">Daily breakdown</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Sleep day</th>
+          <th>Total sleep</th>
+          <th>Night sleep</th>
+          <th>Split night?</th>
+          <th>Naps</th>
+          <th>Avg nap</th>
+          <th>Distribution</th>
+        </tr>
+      </thead>
+      <tbody id="dailyBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let allSessions = [];
+let activePreset = '30';
+let charts = {};
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+function parseDuration(str) {
+  if (!str) return null;
+  str = str.trim();
+  const hm = str.match(/^(\d+)\s*h\s+(\d+)\s*min$/);
+  if (hm) return parseInt(hm[1]) * 60 + parseInt(hm[2]);
+  const h = str.match(/^(\d+)\s*h$/);
+  if (h) return parseInt(h[1]) * 60;
+  const m = str.match(/^(\d+)\s*min$/);
+  if (m) return parseInt(m[1]);
+  return null;
+}
+
+function parseStartMinutes(timeStr) {
+  if (!timeStr) return null;
+  const part = timeStr.split(' - ')[0].trim();
+  const [h, m] = part.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function prevDay(dateStr) {
+  const [m, d, y] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() - 1);
+  return `${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}-${dt.getFullYear()}`;
+}
+
+function sleepDayKey(dateStr, startMins) {
+  return startMins < 12 * 60 ? prevDay(dateStr) : dateStr;
+}
+
+// Minutes from noon of the sleep day (for ordering/gap-computing within a sleep day)
+function posFromNoon(startMins) {
+  return startMins >= 12 * 60 ? startMins - 12 * 60 : startMins + 12 * 60;
+}
+
+function isNight(startMins, durationMins) {
+  // Hard night window: 20:00 – 08:00
+  if (startMins >= 20 * 60 || startMins < 8 * 60) return true;
+  // Gray zone 18:00 – 20:00: night sleep if the session crosses into the hard window
+  if (startMins >= 18 * 60 && (startMins + durationMins) > 20 * 60) return true;
+  return false;
+}
+
+function fmtDuration(mins) {
+  if (mins == null || isNaN(mins)) return '—';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function dateToTs(dateStr) {
+  const [m, d, y] = dateStr.split('-');
+  return new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`).getTime();
+}
+
+function tsToMmDdYyyy(ts) {
+  const dt = new Date(ts);
+  const m = String(dt.getMonth()+1).padStart(2,'0');
+  const d = String(dt.getDate()).padStart(2,'0');
+  const y = dt.getFullYear();
+  return `${m}-${d}-${y}`;
+}
+
+function fmtDateShort(dateStr) {
+  const [m, d, y] = dateStr.split('-');
+  return new Date(`${y}-${m}-${d}`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function fmtDateLong(dateStr) {
+  const [m, d, y] = dateStr.split('-');
+  return new Date(`${y}-${m}-${d}`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// MM-DD-YYYY → YYYY-MM-DD for <input type="date">
+function toInputDate(str) {
+  const [m, d, y] = str.split('-');
+  return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+}
+
+// YYYY-MM-DD → MM-DD-YYYY
+function fromInputDate(str) {
+  const [y, m, d] = str.split('-');
+  return `${m}-${d}-${y}`;
+}
+
+// ── Data processing ───────────────────────────────────────────────────────
+
+function processData(rows) {
+  const sleepRows = rows.filter(r => r.Category && r.Category.trim() === 'Sleep');
+  if (sleepRows.length === 0) throw new Error('No rows with Category = "Sleep" found.');
+  const sessions = [];
+  for (const r of sleepRows) {
+    const mins = parseDuration(r.Detail);
+    if (!mins || mins <= 0) continue;
+    const startMins = parseStartMinutes(r.Time);
+    if (startMins == null) continue;
+    const calDate = r.Day.trim();
+    sessions.push({
+      calDate,
+      sleepDay: sleepDayKey(calDate, startMins),
+      startMins,
+      pos: posFromNoon(startMins),
+      mins,
+      night: isNight(startMins, mins),
+    });
+  }
+  if (sessions.length === 0) throw new Error('Could not parse any valid sessions.');
+  return sessions;
+}
+
+function nightSplitInfo(nightSessions) {
+  if (!nightSessions.length) return null;
+  const sorted = [...nightSessions].sort((a, b) => a.pos - b.pos);
+  const gaps = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i].pos - (sorted[i-1].pos + sorted[i-1].mins);
+    if (gap > 0) gaps.push(gap);
+  }
+  return {
+    nightMins: sorted.reduce((s, n) => s + n.mins, 0),
+    parts: sorted.length,
+    gaps,
+  };
+}
+
+function computeStats(sessions) {
+  if (!sessions.length) return null;
+  const totalMins = sessions.reduce((s, r) => s + r.mins, 0);
+  const byDay = {};
+  for (const s of sessions) {
+    (byDay[s.sleepDay] = byDay[s.sleepDay] || []).push(s);
+  }
+  const days = Object.keys(byDay).sort((a, b) => dateToTs(a) - dateToTs(b));
+
+  const dayTotals = days.map(d => byDay[d].reduce((s, v) => s + v.mins, 0));
+  const avgDaily = Math.round(dayTotals.reduce((s, v) => s + v, 0) / dayTotals.length);
+  const maxDaily = Math.max(...dayTotals);
+
+  const naps      = sessions.filter(s => !s.night);
+  const nightSess = sessions.filter(s => s.night);
+  const avgNap    = naps.length ? Math.round(naps.reduce((s, n) => s + n.mins, 0) / naps.length) : null;
+
+  // Average total night sleep per sleep day (not per individual segment)
+  const daysWithNight = days.filter(d => byDay[d].some(s => s.night));
+  const avgNight = daysWithNight.length
+    ? Math.round(daysWithNight.reduce((s, d) => s + byDay[d].filter(v => v.night).reduce((ms, v) => ms + v.mins, 0), 0) / daysWithNight.length)
+    : null;
+
+  const splitNights = days.filter(d => {
+    const info = nightSplitInfo(byDay[d].filter(s => s.night));
+    return info && info.parts > 1;
+  }).length;
+
+  return {
+    totalSessions: sessions.length,
+    totalMins,
+    avgDaily,
+    maxDaily,
+    maxSession: Math.max(...sessions.map(s => s.mins)),
+    avgNap,
+    avgNight,
+    napCount: naps.length,
+    nightCount: nightSess.length,
+    daysWithNight: daysWithNight.length,
+    splitNights,
+    spanDays: days.length,
+    firstDate: fmtDateLong(days[0]),
+    lastDate:  fmtDateLong(days[days.length - 1]),
+    byDay,
+    days,
+    dayTotals,
+  };
+}
+
+// ── Filtering ─────────────────────────────────────────────────────────────
+
+function getFilteredSessions() {
+  const fromInput = document.getElementById('fromDate').value;
+  const toInput   = document.getElementById('toDate').value;
+  if (!fromInput && !toInput) return allSessions;
+  return allSessions.filter(s => {
+    const ts = dateToTs(s.sleepDay);
+    const from = fromInput ? new Date(fromInput).getTime() : -Infinity;
+    const to   = toInput   ? new Date(toInput).getTime()   :  Infinity;
+    return ts >= from && ts <= to;
+  });
+}
+
+function setDateRange(fromStr, toStr) {
+  document.getElementById('fromDate').value = fromStr ? toInputDate(fromStr) : '';
+  document.getElementById('toDate').value   = toStr   ? toInputDate(toStr)   : '';
+}
+
+function applyPreset(preset) {
+  activePreset = preset;
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.preset === preset);
+  });
+
+  if (!allSessions.length) return;
+  const allDays = [...new Set(allSessions.map(s => s.sleepDay))].sort((a, b) => dateToTs(a) - dateToTs(b));
+  const lastDay = allDays[allDays.length - 1];
+  const lastTs  = dateToTs(lastDay);
+
+  if (preset === '0') {
+    setDateRange('', '');
+  } else {
+    const days = parseInt(preset);
+    const fromTs = lastTs - (days - 1) * 86400000;
+    setDateRange(tsToMmDdYyyy(fromTs), lastDay);
+  }
+  applyFilter();
+}
+
+function applyFilter() {
+  const sessions = getFilteredSessions();
+  if (!sessions.length) return;
+  const stats = computeStats(sessions);
+  renderStats(stats);
+  renderCompositionChart(stats);
+  renderHeatmap(sessions, stats.days);
+  renderTable(stats);
+}
+
+// ── Render: stats ─────────────────────────────────────────────────────────
+
+function renderStats(stats) {
+  const grid = document.getElementById('statsGrid');
+  grid.innerHTML = '';
+  const pct = (n, d) => d ? `${Math.round(n / d * 100)}%` : '—';
+  const cards = [
+    { label: 'Total sessions',      value: stats.totalSessions },
+    { label: 'Total sleep tracked', value: fmtDuration(stats.totalMins), accent: true },
+    { label: 'Avg daily sleep',     value: fmtDuration(stats.avgDaily),  accent: true },
+    { label: 'Longest session',     value: fmtDuration(stats.maxSession) },
+    { label: 'Avg nightly sleep',    value: fmtDuration(stats.avgNight),
+      sub: `across ${stats.daysWithNight} nights` },
+    { label: 'Avg nap',             value: fmtDuration(stats.avgNap),
+      sub: `${stats.napCount} naps (${pct(stats.napCount, stats.totalSessions)})` },
+    { label: 'Split nights',        value: stats.splitNights,
+      sub: `of ${stats.spanDays} sleep days (${pct(stats.splitNights, stats.spanDays)})` },
+    { label: 'Sleep days tracked',  value: stats.spanDays },
+    { label: 'Period',              value: stats.firstDate, sub: `to ${stats.lastDate}`, small: true },
+  ];
+  for (const c of cards) {
+    const div = document.createElement('div');
+    div.className = 'stat-card' + (c.accent ? ' accent' : '');
+    div.innerHTML = `
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-value" style="${c.small ? 'font-size:1rem' : ''}">${c.value}</div>
+      ${c.sub ? `<div class="stat-sub">${c.sub}</div>` : ''}
+    `;
+    grid.appendChild(div);
+  }
+}
+
+// ── Render: composition chart ─────────────────────────────────────────────
+
+function renderCompositionChart(stats) {
+  if (charts.composition) { charts.composition.destroy(); charts.composition = null; }
+
+  const scroll = document.getElementById('compositionScroll');
+  scroll.innerHTML = '<canvas id="compositionChart" height="300"></canvas>';
+  const canvas = document.getElementById('compositionChart');
+
+  const { days, byDay } = stats;
+  if (!days.length) return;
+
+  const nightH = [], napH = [], dayAwakeH = [], splitH = [], rollingH = [];
+  const labels = [];
+
+  for (let i = 0; i < days.length; i++) {
+    const d = days[i];
+    const sessions = byDay[d];
+    const nightInfo = nightSplitInfo(sessions.filter(s => s.night));
+    const nightMins = nightInfo ? nightInfo.nightMins : 0;
+    const splitMins = nightInfo ? nightInfo.gaps.reduce((s, g) => s + g, 0) : 0;
+    const napMins   = sessions.filter(s => !s.night).reduce((s, v) => s + v.mins, 0);
+    const totalSleepMins = nightMins + napMins;
+    const dayAwakeMins = Math.max(0, 1440 - totalSleepMins - splitMins);
+
+    nightH.push(+(nightMins / 60).toFixed(2));
+    napH.push(+(napMins / 60).toFixed(2));
+    dayAwakeH.push(+(dayAwakeMins / 60).toFixed(2));
+    splitH.push(+(splitMins / 60).toFixed(2));
+
+    // 7-day trailing rolling average of total sleep
+    const winStart = Math.max(0, i - 6);
+    const winDays  = days.slice(winStart, i + 1);
+    const avgMins  = winDays.reduce((s, wd) => s + byDay[wd].reduce((ms, v) => ms + v.mins, 0), 0) / winDays.length;
+    rollingH.push(+(avgMins / 60).toFixed(2));
+
+    labels.push(fmtDateShort(d));
+  }
+
+  // Dynamic width: minimum 24px per day group
+  const minW = Math.max(scroll.clientWidth || 600, days.length * 24 + 80);
+  canvas.style.width = minW + 'px';
+  canvas.width = minW;
+
+  charts.composition = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Night sleep',
+          data: nightH,
+          backgroundColor: '#4338ca',
+          stack: 'sleep',
+          order: 2,
+        },
+        {
+          label: 'Naps',
+          data: napH,
+          backgroundColor: '#0d9488',
+          stack: 'sleep',
+          order: 2,
+        },
+        {
+          label: 'Daytime awake',
+          data: dayAwakeH,
+          backgroundColor: '#1e3a5f',
+          stack: 'awake',
+          order: 2,
+        },
+        {
+          label: 'Split awake',
+          data: splitH,
+          backgroundColor: '#b45309',
+          stack: 'awake',
+          order: 2,
+        },
+        {
+          label: '7-day avg (total sleep)',
+          data: rollingH,
+          type: 'line',
+          borderColor: '#fbbf24',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.3,
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: false,
+      animation: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#64748b',
+            font: { size: 11 },
+            boxWidth: 12,
+            padding: 16,
+          },
+        },
+        tooltip: {
+          mode: 'index',
+          callbacks: {
+            label(ctx) {
+              const v = ctx.raw;
+              const label = ctx.dataset.label;
+              if (label === '7-day avg (total sleep)') {
+                return `  ${label}: ${fmtDuration(Math.round(v * 60))}`;
+              }
+              if (v === 0) return null;
+              return `  ${label}: ${fmtDuration(Math.round(v * 60))}`;
+            },
+          },
+          backgroundColor: '#1e293b',
+          borderColor: '#334155',
+          borderWidth: 1,
+          titleColor: '#94a3b8',
+          bodyColor: '#cbd5e1',
+        },
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: {
+            color: '#475569',
+            font: { size: 10 },
+            maxRotation: 45,
+            minRotation: 45,
+            autoSkip: true,
+            maxTicksLimit: 30,
+          },
+          grid: { color: '#1e293b' },
+        },
+        y: {
+          stacked: true,
+          min: 0,
+          max: 24,
+          ticks: {
+            color: '#475569',
+            font: { size: 10 },
+            stepSize: 4,
+            callback: v => `${v}h`,
+          },
+          grid: { color: '#263348' },
+        },
+      },
+    },
+  });
+}
+
+// ── Render: heatmap ───────────────────────────────────────────────────────
+
+function renderHeatmap(sessions, days) {
+  const canvas = document.getElementById('heatmapCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  const LABEL_W = 68;
+  const PAD_R   = 8;
+  const AXIS_H  = 22;
+  const ROW_H   = 14;
+  const ROW_GAP = 3;
+
+  const container = canvas.parentElement;
+  const W = Math.max((container.clientWidth || 600), 500);
+  const H = AXIS_H + days.length * (ROW_H + ROW_GAP) + ROW_GAP;
+
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  const GRID_W = W - LABEL_W - PAD_R;
+
+  // Background
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(0, 0, W, H);
+
+  // Hour markers: noon → noon (0 to 1440 min)
+  const hourMarks = [
+    { label: '12', mins: 0 },
+    { label: '14', mins: 120 },
+    { label: '16', mins: 240 },
+    { label: '18', mins: 360 },
+    { label: '20', mins: 480 },
+    { label: '22', mins: 600 },
+    { label: '00', mins: 720 },
+    { label: '02', mins: 840 },
+    { label: '04', mins: 960 },
+    { label: '06', mins: 1080 },
+    { label: '08', mins: 1200 },
+    { label: '10', mins: 1320 },
+    { label: '12', mins: 1440 },
+  ];
+
+  ctx.font = `10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  ctx.textAlign = 'center';
+
+  for (const { label, mins } of hourMarks) {
+    const x = LABEL_W + (mins / 1440) * GRID_W;
+    ctx.fillStyle = '#475569';
+    ctx.fillText(label, x, AXIS_H - 5);
+    if (mins > 0 && mins < 1440) {
+      ctx.strokeStyle = mins === 720 ? '#334155' : '#263348'; // midnight = more visible
+      ctx.lineWidth = mins === 720 ? 1.5 : 0.75;
+      ctx.beginPath();
+      ctx.moveTo(x, AXIS_H);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+  }
+
+  // Build session map and precompute total night sleep per sleep day
+  const byDay = {};
+  for (const s of sessions) {
+    (byDay[s.sleepDay] = byDay[s.sleepDay] || []).push(s);
+  }
+
+  const nightTotalByDay = {};
+  for (const [day, daySessions] of Object.entries(byDay)) {
+    nightTotalByDay[day] = daySessions.filter(s => s.night).reduce((sum, s) => sum + s.mins, 0);
+  }
+
+  function sessionColor(s, day) {
+    if (s.night) {
+      const total = nightTotalByDay[day] || 0;
+      if (total > 16 * 60) return '#ef4444';
+      if (total < 8 * 60)  return '#d97706';
+      return '#4338ca';
+    } else {
+      if (s.mins > 3 * 60) return '#ef4444';
+      if (s.mins < 30)     return '#d97706';
+      return '#0d9488';
+    }
+  }
+
+  // Draw rows, most recent at top
+  const reversedDays = [...days].reverse();
+
+  for (let i = 0; i < reversedDays.length; i++) {
+    const day = reversedDays[i];
+    const y = AXIS_H + ROW_GAP + i * (ROW_H + ROW_GAP);
+
+    // Row background
+    ctx.fillStyle = '#0f1117';
+    ctx.fillRect(LABEL_W, y, GRID_W, ROW_H);
+
+    // Date label
+    ctx.fillStyle = '#475569';
+    ctx.textAlign = 'right';
+    ctx.font = `10px -apple-system, sans-serif`;
+    ctx.fillText(fmtDateShort(day), LABEL_W - 5, y + ROW_H - 3);
+
+    // Sessions
+    for (const s of byDay[day] || []) {
+      const x = LABEL_W + (s.pos / 1440) * GRID_W;
+      const w = Math.min(
+        Math.max(2, (s.mins / 1440) * GRID_W),
+        LABEL_W + GRID_W - x
+      );
+      if (w <= 0) continue;
+      ctx.fillStyle = sessionColor(s, day);
+      ctx.fillRect(x, y + 1, w, ROW_H - 2);
+    }
+  }
+}
+
+// ── Render: table ─────────────────────────────────────────────────────────
+
+function renderTable(stats) {
+  const tbody = document.getElementById('dailyBody');
+  tbody.innerHTML = '';
+
+  for (const day of [...stats.days].reverse()) {
+    const sessions  = stats.byDay[day];
+    const total     = sessions.reduce((s, v) => s + v.mins, 0);
+    const naps      = sessions.filter(s => !s.night);
+    const avgNap    = naps.length ? Math.round(naps.reduce((s, n) => s + n.mins, 0) / naps.length) : null;
+    const nightInfo = nightSplitInfo(sessions.filter(s => s.night));
+    const barWidth  = Math.round((total / stats.maxDaily) * 100);
+
+    let nightCell, splitCell;
+    if (!nightInfo) {
+      nightCell = '<span class="muted">—</span>';
+      splitCell = '<span class="muted">—</span>';
+    } else if (nightInfo.parts === 1) {
+      nightCell = fmtDuration(nightInfo.nightMins);
+      splitCell = '<span class="muted">—</span>';
+    } else {
+      nightCell = fmtDuration(nightInfo.nightMins);
+      const gapStr = nightInfo.gaps.map(g => fmtDuration(g)).join(' + ');
+      splitCell = `<span class="split-badge">${nightInfo.parts} parts · ${gapStr} awake</span>`;
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDateLong(day)}</td>
+      <td>${fmtDuration(total)}</td>
+      <td>${nightCell}</td>
+      <td>${splitCell}</td>
+      <td>${naps.length || '<span class="muted">—</span>'}</td>
+      <td>${avgNap ? fmtDuration(avgNap) : '<span class="muted">—</span>'}</td>
+      <td>
+        <div class="bar-cell">
+          <span style="color:#475569;font-size:0.75rem">${fmtDuration(total)}</span>
+          <div class="bar" style="width:${barWidth}px"></div>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+// ── File handling ─────────────────────────────────────────────────────────
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function handleFile(file) {
+  document.getElementById('errorMsg').style.display = 'none';
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete(result) {
+      try {
+        allSessions = processData(result.data);
+
+        document.getElementById('fileInfo').style.display = 'inline-flex';
+        document.getElementById('fileInfoText').textContent =
+          `${file.name} · ${allSessions.length} sessions loaded`;
+        document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('uploadArea').style.display = 'none';
+
+        // Set default preset (30 days from last day in data)
+        applyPreset('30');
+      } catch (e) {
+        showError(e.message);
+      }
+    },
+    error(err) { showError('CSV parse error: ' + err.message); },
+  });
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+const uploadArea = document.getElementById('uploadArea');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+uploadArea.addEventListener('click', () => document.getElementById('fileInput').click());
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+['fromDate', 'toDate'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    // Deactivate presets when user types a custom range
+    activePreset = 'custom';
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    applyFilter();
+  });
+});
+</script>
+</body>
+</html>
