@@ -2862,10 +2862,15 @@ function renderHomeHealthWidget() {
 
 // ── Tab navigation ────────────────────────────────────────────────────────
 
-function showTab(name) {
+let _currentTab = 'home';
+
+function showTab(name, { pushState = true } = {}) {
   document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.getElementById(`tab-${name}`).classList.add('active');
+  _currentTab = name;
+
+  if (pushState) history.pushState({ tab: name }, '', '');
 
   if (name === 'home')      loadHome();
   if (name === 'sleep')     loadTracker();
@@ -2881,6 +2886,13 @@ function showTab(name) {
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => showTab(btn.dataset.tab));
+});
+
+// Back button: navigate to previous tab, or let Android minimize the app
+// when already on home (by not calling preventDefault).
+window.addEventListener('popstate', e => {
+  const tab = e.state?.tab ?? 'home';
+  showTab(tab, { pushState: false });
 });
 
 document.querySelectorAll('.preset-btn').forEach(btn => {
@@ -2922,6 +2934,8 @@ if ('serviceWorker' in navigator) {
   await loadFeatures();
   await loadSettings();
   lucide.createIcons();
+  // Seed a history entry for home so the first back press goes to the OS.
+  history.replaceState({ tab: 'home' }, '', '');
   loadHome();
 })();
 </script>
