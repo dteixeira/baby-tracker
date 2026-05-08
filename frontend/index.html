@@ -2888,11 +2888,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => showTab(btn.dataset.tab));
 });
 
-// Back button: navigate to previous tab, or let Android minimize the app
-// when already on home (by not calling preventDefault).
+// Back button: navigate to previous tab. When landing on home via back,
+// immediately re-push a home entry so there's always a buffer — the user
+// can never accidentally navigate past home into a blank page.
 window.addEventListener('popstate', e => {
   const tab = e.state?.tab ?? 'home';
   showTab(tab, { pushState: false });
+  if (tab === 'home') history.pushState({ tab: 'home' }, '', '');
 });
 
 document.querySelectorAll('.preset-btn').forEach(btn => {
@@ -2934,8 +2936,10 @@ if ('serviceWorker' in navigator) {
   await loadFeatures();
   await loadSettings();
   lucide.createIcons();
-  // Seed a history entry for home so the first back press goes to the OS.
+  // Seed two home entries: replaceState for the base, pushState as a buffer
+  // so the popstate handler always has a home entry to replenish from.
   history.replaceState({ tab: 'home' }, '', '');
+  history.pushState({ tab: 'home' }, '', '');
   loadHome();
 })();
 </script>
