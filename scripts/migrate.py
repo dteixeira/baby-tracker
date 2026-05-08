@@ -2,8 +2,11 @@
 """
 One-time CSV import: seeds sleep_entries from a CSV export.
 
-Usage:
+Usage (direct DB):
     python scripts/migrate.py --csv sleep.csv --db data/sleep.db [--timezone Europe/Lisbon]
+
+Usage (remote API):
+    python scripts/migrate.py --csv sleep.csv --server http://localhost:8080 [--timezone Europe/Lisbon]
 
 The script is idempotent — safe to run multiple times; it deduplicates on start_time.
 """
@@ -79,21 +82,18 @@ def classify_type(start_mins: int, duration_mins: int) -> str:
     return "nap"
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Session parsing ───────────────────────────────────────────────────────────
 
-def migrate(csv_path: str, db_path: str, tz: ZoneInfo, dry_run: bool = False) -> None:
-    # ── Read CSV
+def parse_sessions(csv_path: str, tz: ZoneInfo) -> list[dict]:
     with open(csv_path, newline='', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         rows = list(reader)
 
     print(f"Read {len(rows)} rows from {csv_path}")
 
-    # ── Filter for Sleep rows
     sleep_rows = [r for r in rows if r.get('Category', '').strip() == 'Sleep']
     print(f"  → {len(sleep_rows)} rows with Category = Sleep")
 
-    # ── Parse sessions
     sessions: list[dict] = []
     skipped = 0
 
@@ -116,37 +116,23 @@ def migrate(csv_path: str, db_path: str, tz: ZoneInfo, dry_run: bool = False) ->
         year, month, day = date_parsed
         start_mins, end_mins = time_range
 
-        # Build start datetime
         start_dt = datetime(year, month, day, start_mins // 60, start_mins % 60)
-
-        # Build end datetime: add duration to start (more reliable than parsing end time)
-        end_dt = start_dt + timedelta(minutes=duration_mins)
-
-        start_utc = to_utc_iso(start_dt, tz)
-        end_utc   = to_utc_iso(end_dt, tz)
-        sleep_type = classify_type(start_mins, duration_mins)
+        end_dt   = start_dt + timedelta(minutes=duration_mins)
 
         sessions.append({
-            "start_time": start_utc,
-            "end_time":   end_utc,
-            "type":       sleep_type,
+            "start_time": to_utc_iso(start_dt, tz),
+            "end_time":   to_utc_iso(end_dt, tz),
+            "type":       classify_type(start_mins, duration_mins),
             "notes":      None,
         })
 
     print(f"  → {len(sessions)} valid sessions parsed, {skipped} skipped")
+    return sessions
 
-    if not sessions:
-        print("Nothing to import.")
-        return
 
-    if dry_run:
-        for s in sessions[:5]:
-            print(f"  [dry-run] {s}")
-        if len(sessions) > 5:
-            print(f"  ... and {len(sessions) - 5} more")
-        return
+# ── Import: direct DB ─────────────────────────────────────────────────────────
 
-    # ── Init DB schema
+def migrate_db(sessions: list[dict], db_path: str) -> None:
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA journal_mode=WAL")
@@ -162,7 +148,6 @@ def migrate(csv_path: str, db_path: str, tz: ZoneInfo, dry_run: bool = False) ->
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_sleep_start ON sleep_entries(start_time)")
 
-    # ── Fetch existing start_times for deduplication
     existing = {row[0] for row in conn.execute("SELECT start_time FROM sleep_entries")}
     print(f"  → {len(existing)} existing entries in DB (will skip duplicates)")
 
@@ -182,12 +167,69 @@ def migrate(csv_path: str, db_path: str, tz: ZoneInfo, dry_run: bool = False) ->
     print(f"  → Inserted {inserted} new entries.")
 
 
+# ── Import: remote API ────────────────────────────────────────────────────────
+
+def migrate_api(sessions: list[dict], server: str) -> None:
+    try:
+        import httpx
+    except ImportError:
+        print("Error: httpx is required for --server mode. Run: pip install httpx", file=sys.stderr)
+        sys.exit(1)
+
+    base = server.rstrip('/')
+
+    # Fetch all existing start_times for deduplication (paginated)
+    print(f"  → Fetching existing entries from {base}/api/sleep …")
+    existing: set[str] = set()
+    offset = 0
+    limit  = 1000
+    with httpx.Client(base_url=base, timeout=30) as client:
+        while True:
+            resp = client.get("/api/sleep", params={"limit": limit, "offset": offset})
+            resp.raise_for_status()
+            page = resp.json()
+            if not page:
+                break
+            for entry in page:
+                existing.add(entry["start_time"])
+            if len(page) < limit:
+                break
+            offset += limit
+
+        print(f"  → {len(existing)} existing entries on server (will skip duplicates)")
+
+        to_insert = [s for s in sessions if s["start_time"] not in existing]
+        print(f"  → Inserting {len(to_insert)} new entries…")
+
+        inserted = 0
+        errors   = 0
+        for s in to_insert:
+            try:
+                resp = client.post("/api/sleep", json=s)
+                resp.raise_for_status()
+                inserted += 1
+            except httpx.HTTPStatusError as e:
+                print(f"  [warn] {s['start_time']} → HTTP {e.response.status_code}", file=sys.stderr)
+                errors += 1
+            except httpx.RequestError as e:
+                print(f"  [error] {s['start_time']} → {e}", file=sys.stderr)
+                errors += 1
+
+    print(f"  → Inserted {inserted} new entries ({errors} errors).")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Migrate sleep CSV into SQLite")
-    parser.add_argument("--csv",      required=True, help="Path to the CSV file")
-    parser.add_argument("--db",       required=True, help="Path to the SQLite database")
-    parser.add_argument("--timezone", default=None,  help="Local timezone (e.g. Europe/Lisbon). Defaults to system timezone.")
-    parser.add_argument("--dry-run",  action="store_true", help="Parse only, do not write to DB")
+    parser = argparse.ArgumentParser(description="Migrate sleep CSV into Baby Tracker")
+    parser.add_argument("--csv",      required=True,      help="Path to the CSV file")
+    parser.add_argument("--timezone", default=None,        help="Local timezone (e.g. Europe/Lisbon). Defaults to system timezone.")
+    parser.add_argument("--dry-run",  action="store_true", help="Parse only, do not write anything")
+
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--db",     help="Path to the SQLite database (direct import)")
+    target.add_argument("--server", help="Base URL of a running Baby Tracker instance (e.g. http://localhost:8080)")
+
     args = parser.parse_args()
 
     if not os.path.exists(args.csv):
@@ -202,10 +244,26 @@ def main() -> None:
             print(f"Error: unknown timezone '{tz_name}'", file=sys.stderr)
             sys.exit(1)
     else:
-        tz = datetime.now().astimezone().tzinfo  # system local timezone
+        tz = datetime.now().astimezone().tzinfo
         print(f"Using system timezone: {tz}")
 
-    migrate(args.csv, args.db, tz, dry_run=args.dry_run)
+    sessions = parse_sessions(args.csv, tz)
+
+    if not sessions:
+        print("Nothing to import.")
+        return
+
+    if args.dry_run:
+        for s in sessions[:5]:
+            print(f"  [dry-run] {s}")
+        if len(sessions) > 5:
+            print(f"  ... and {len(sessions) - 5} more")
+        return
+
+    if args.db:
+        migrate_db(sessions, args.db)
+    else:
+        migrate_api(sessions, args.server)
 
 
 if __name__ == "__main__":
